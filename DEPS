@@ -282,6 +282,7 @@ vars = {
   'skia_git': 'https://skia.googlesource.com',
   'swiftshader_git': 'https://swiftshader.googlesource.com',
   'webrtc_git': 'https://webrtc.googlesource.com',
+  'hopium_git': 'git@github.com:protectednet',
   # Three lines of non-changing comments so that
   # the commit queue can handle CLs rolling Skia
   # and whatever else without interference from each other.
@@ -505,6 +506,7 @@ allowed_hosts = [
 ]
 
 deps = {
+  'src/chrome/hopium/tslib_hopium': Var('hopium_git') + '/tslib_hopium.git@main',
   'src/buildtools/clang_format/script':
     Var('chromium_git') +
     '/external/github.com/llvm/llvm-project/clang/tools/clang-format.git@' +

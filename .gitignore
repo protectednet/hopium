@@ -1,3 +1,6 @@
+#ignore all hopium
+/chrome/hopium/
+
 /client-py/
 *.bak
 *.code-workspace
