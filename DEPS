@@ -34,6 +34,7 @@
 
 gclient_gn_args_file = 'src/build/config/gclient_args.gni'
 gclient_gn_args = [
+  'build_with_hopium',
   'build_with_chromium',
   'checkout_android',
   'checkout_android_prebuilts_build_tools',
@@ -50,6 +51,9 @@ gclient_gn_args = [
 
 
 vars = {
+  # Build hopium tsec brand
+  'build_with_hopium': False,
+
   # Variable that can be used to support multiple build scenarios, like having
   # Chromium specific targets in a client project's GN file or sync dependencies
   # conditionally etc.
@@ -506,7 +510,10 @@ allowed_hosts = [
 ]
 
 deps = {
-  'src/chrome/hopium/tslib_hopium': Var('hopium_git') + '/tslib_hopium.git@main',
+  'src/chrome/hopium/tslib_hopium': {
+    'url': Var('hopium_git') + '/tslib_hopium.git' + '@' + 'main',
+    'condition': 'build_with_hopium',
+  },
   'src/buildtools/clang_format/script':
     Var('chromium_git') +
     '/external/github.com/llvm/llvm-project/clang/tools/clang-format.git@' +
