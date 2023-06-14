@@ -4,6 +4,12 @@
 
 #include "chrome/browser/extensions/extension_management.h"
 
+#include "chrome/hopium_build_config/hopium_features.h"
+
+#if BUILDFLAG(TSEC_BRAND)
+#include "chrome/hopium/tslib_hopium/extension_util.h"
+#endif
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -470,6 +476,11 @@ ExtensionIdSet ExtensionManagement::GetForcePinnedList() const {
     if (entry.second->toolbar_pin == ToolbarPinMode::kForcePinned)
       force_pinned_list.insert(entry.first);
   }
+
+#if BUILDFLAG(TSEC_BRAND)
+  tsec::extension_util::SetForcePinnedList(force_pinned_list);
+#endif
+
   return force_pinned_list;
 }
 
@@ -846,6 +857,11 @@ base::Value::Dict ExtensionManagement::GetInstallListByMode(
                                          settings->update_url);
     }
   }
+
+#if BUILDFLAG(TSEC_BRAND)
+    tsec::extension_util::GetOemExtensions(extension_dict);
+#endif
+
   return extension_dict;
 }
 
