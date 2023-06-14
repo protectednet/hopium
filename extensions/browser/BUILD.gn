@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//chrome/hopium_build_config/hopium_features.gni")
 import("//build/config/chromeos/ui_mode.gni")
 import("//build/config/features.gni")
 import("//extensions/buildflags/buildflags.gni")
@@ -635,10 +634,6 @@ source_set("browser_sources") {
     "//ui/display",
     "//url",
   ]
-
-  if (tsec_brand) {
-    deps += ["//chrome/hopium/tslib_hopium:tsec_lib"]
-  }
 
   public_deps = [
     "//base",
