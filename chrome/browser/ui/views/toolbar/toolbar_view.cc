@@ -4,6 +4,8 @@
 
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 
+#include "chrome/hopium_build_config/hopium_features.h"
+
 #include <algorithm>
 #include <utility>
 
@@ -314,6 +316,8 @@ void ToolbarView::Init() {
 
   std::unique_ptr<SidePanelToolbarButton> side_panel_button;
   std::unique_ptr<SidePanelToolbarContainer> side_panel_toolbar_container;
+
+#if !BUILDFLAG(TSEC_BRAND)
   if (browser_view_->unified_side_panel()) {
     if (base::FeatureList::IsEnabled(
             companion::features::kSidePanelCompanion)) {
@@ -323,6 +327,7 @@ void ToolbarView::Init() {
       side_panel_button = std::make_unique<SidePanelToolbarButton>(browser_);
     }
   }
+#endif
 
   // Always add children in order from left to right, for accessibility.
   back_ = AddChildView(std::move(back));
