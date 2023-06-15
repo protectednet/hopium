@@ -866,7 +866,7 @@ void ExtensionsToolbarContainer::UpdateContainerVisibility() {
     std::move(GetOnVisibleCallbackForTesting()).Run();
 
 #if BUILDFLAG(TSEC_BRAND)
-  tsec::extension_util::SetExtensionsButtonVisibility(extensions_button_.get(), actions_);
+  tsec::extension_util::SetExtensionsButtonVisibility(extensions_button_, actions_);
 #endif
 }
 
