@@ -401,6 +401,9 @@ void ToolbarView::Init() {
 #elif BUILDFLAG(IS_CHROMEOS_LACROS)
   show_avatar_toolbar_button = !profiles::IsPublicSession();
 #endif
+#if BUILDFLAG(TSEC_BRAND)
+  show_avatar_toolbar_button = false;
+#endif
   avatar_->SetVisible(show_avatar_toolbar_button);
 
   auto app_menu_button = std::make_unique<BrowserAppMenuButton>(this);
