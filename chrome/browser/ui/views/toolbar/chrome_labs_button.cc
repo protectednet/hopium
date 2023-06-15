@@ -4,6 +4,8 @@
 
 #include "chrome/browser/ui/views/toolbar/chrome_labs_button.h"
 
+#include "chrome/hopium_build_config/hopium_features.h"
+
 #include "base/command_line.h"
 #include "base/ranges/algorithm.h"
 #include "chrome/app/vector_icons/vector_icons.h"
@@ -153,6 +155,10 @@ void ChromeLabsButton::UpdateDotIndicator() {
 // static
 bool ChromeLabsButton::ShouldShowButton(const ChromeLabsBubbleViewModel* model,
                                         Profile* profile) {
+  #if BUILDFLAG(TSEC_BRAND)
+    return false;
+  #endif
+
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
           ash::switches::kSafeMode) ||
