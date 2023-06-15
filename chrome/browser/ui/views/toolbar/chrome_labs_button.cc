@@ -155,10 +155,6 @@ void ChromeLabsButton::UpdateDotIndicator() {
 // static
 bool ChromeLabsButton::ShouldShowButton(const ChromeLabsBubbleViewModel* model,
                                         Profile* profile) {
-  #if BUILDFLAG(TSEC_BRAND)
-    return false;
-  #endif
-
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
           ash::switches::kSafeMode) ||
@@ -167,10 +163,16 @@ bool ChromeLabsButton::ShouldShowButton(const ChromeLabsBubbleViewModel* model,
   }
 #endif
 
+#if BUILDFLAG(TSEC_BRAND)
+  return false;
+#else
+
   return base::ranges::any_of(model->GetLabInfo(),
                               [&profile](const LabInfo& lab) {
                                 return IsChromeLabsFeatureValid(lab, profile);
                               });
+
+#endif
 }
 
 BEGIN_METADATA(ChromeLabsButton, ToolbarButton)
