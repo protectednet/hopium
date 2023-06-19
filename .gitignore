@@ -1,6 +1,5 @@
 #ignore all hopium
 /chrome/hopium/
-/chrome/app/theme/hopium/
 
 /client-py/
 *.bak
