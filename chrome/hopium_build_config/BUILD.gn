@@ -3,7 +3,10 @@ import("hopium_features.gni")
 
 buildflag_header("hopium_features") {
     header = "hopium_features.h"
-    flags = ["TSEC_BRAND=$tsec_brand"]
+    flags = [
+        "TSEC_BRAND=$tsec_brand",
+        "TSEC_FULL_REBRAND=$tsec_full_rebrand"
+    ]
 }
 
 static_library("hopium_config") {
