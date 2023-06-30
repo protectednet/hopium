@@ -116,6 +116,11 @@
 #include "third_party/blink/public/mojom/runtime_feature_state/runtime_feature_state.mojom.h"
 #include "url/url_constants.h"
 
+#include "chrome/hopium_build_config/hopium_features.h"
+#if BUILDFLAG(TSEC_BRAND)
+#include "hopium/tslib_hopium/internal_url_utils.h"
+#endif
+
 namespace content {
 namespace {
 
@@ -418,6 +423,15 @@ void RewriteUrlForNavigation(const GURL& original_url,
   // will actually be loaded. This real URL won't be shown to the user, just
   // used internally.
   *url_to_load = *virtual_url = original_url;
+
+  #if BUILDFLAG(TSEC_BRAND)
+  tsec::url_utils::RewriteUrlForNavigation(original_url,
+                                         browser_context,
+                                         url_to_load,
+                                         virtual_url,
+                                         reverse_on_redirect);
+  #endif
+
   BrowserURLHandlerImpl::GetInstance()->RewriteURLIfNecessary(
       url_to_load, browser_context, reverse_on_redirect);
 }

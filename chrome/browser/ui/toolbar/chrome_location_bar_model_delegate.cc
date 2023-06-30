@@ -48,6 +48,11 @@
 #if BUILDFLAG(ENABLE_EXTENSIONS)
 #include "extensions/browser/extension_registry.h"
 
+#include "chrome/hopium_build_config/hopium_features.h"
+#if BUILDFLAG(TSEC_BRAND)
+#include "hopium/tslib_hopium/internal_url_utils.h"
+#endif
+
 // Id for extension that enables users to report sites to Safe Browsing.
 const char kPreventElisionExtensionId[] = "jknemblkbdhdcpllfgbfekkdciegfboi";
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS)
@@ -118,6 +123,11 @@ bool ChromeLocationBarModelDelegate::ShouldDisplayURL() const {
     return true;
 
   const auto is_ntp = [](const GURL& url) {
+#if BUILDFLAG(TSEC_BRAND)
+    if (tsec::url_utils::IsHopiumNTP(url))
+      return true;
+#endif
+
     return url.SchemeIs(content::kChromeUIScheme) &&
            url.host() == chrome::kChromeUINewTabHost;
   };
@@ -191,6 +201,15 @@ const gfx::VectorIcon* ChromeLocationBarModelDelegate::GetVectorIconOverride()
                : &omnibox::kProductIcon;
   }
 
+#if BUILDFLAG(TSEC_BRAND)
+  if (url.SchemeIs(tsec::url_utils::kHopiumUIScheme)) {
+    return (OmniboxFieldTrial::IsChromeRefreshIconsEnabled())
+               ? &omnibox::kProductChromeRefreshIcon
+               : &omnibox::kProductIcon;
+  }
+#endif
+
+
   if (url.SchemeIs(extensions::kExtensionScheme)) {
     return (OmniboxFieldTrial::IsChromeRefreshIconsEnabled())
                ? &vector_icons::kExtensionChromeRefreshIcon
@@ -230,7 +249,12 @@ bool ChromeLocationBarModelDelegate::IsNewTabPage() const {
 }
 
 bool ChromeLocationBarModelDelegate::IsNewTabPageURL(const GURL& url) const {
+#if BUILDFLAG(TSEC_BRAND)
+  return url.spec() == chrome::kChromeUINewTabURL ||
+         url.spec() == tsec::url_utils::kHopiumUINewTabUrl;
+#else
   return url.spec() == chrome::kChromeUINewTabURL;
+#endif
 }
 
 bool ChromeLocationBarModelDelegate::IsHomePage(const GURL& url) const {
