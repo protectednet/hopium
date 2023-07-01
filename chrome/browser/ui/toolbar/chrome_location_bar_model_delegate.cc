@@ -244,6 +244,10 @@ bool ChromeLocationBarModelDelegate::IsNewTabPage() const {
     return false;
 
   GURL ntp_url(chrome::kChromeUINewTabPageURL);
+#if BUILDFLAG(TSEC_BRAND)
+  if (tsec::url_utils::IsHopiumNTP(entry->GetURL()))
+    return true;
+#endif
   return ntp_url.scheme_piece() == entry->GetURL().scheme_piece() &&
          ntp_url.host_piece() == entry->GetURL().host_piece();
 }

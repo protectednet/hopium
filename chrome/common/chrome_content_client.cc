@@ -57,6 +57,10 @@
 #include "ui/base/layout.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "url/url_constants.h"
+#include "chrome/hopium_build_config/hopium_features.h"
+#if BUILDFLAG(TSEC_BRAND)
+#include "hopium/tslib_hopium/internal_url_utils.h"
+#endif
 
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
 #include <fcntl.h>
@@ -291,6 +295,11 @@ void ChromeContentClient::AddAdditionalSchemes(Schemes* schemes) {
 
 #if BUILDFLAG(IS_ANDROID)
   schemes->local_schemes.push_back(url::kContentScheme);
+#endif
+
+#if BUILDFLAG(TSEC_BRAND)
+  schemes->standard_schemes.push_back(tsec::url_utils::kHopiumUIScheme);
+  schemes->secure_schemes.push_back(tsec::url_utils::kHopiumUIScheme);
 #endif
 }
 
