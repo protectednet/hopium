@@ -2454,7 +2454,7 @@ static_library("browser") {
   ]
 
   if (tsec_brand) {
-    deps += ["//chrome/hopium/tslib_hopium:tsec_lib"]
+    deps += ["//hopium/tslib_hopium:tsec_lib"]
   }
 
   if (enable_screen_ai_service) {

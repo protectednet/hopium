@@ -78,6 +78,10 @@
 #include "third_party/boringssl/src/include/openssl/ssl.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "url/origin.h"
+#include "chrome/hopium_build_config/hopium_features.h"
+#if BUILDFLAG(TSEC_BRAND)
+#include "hopium/tslib_hopium/internal_url_utils.h"
+#endif
 
 using base::ASCIIToUTF16;
 using base::UTF16ToUTF8;
@@ -436,6 +440,11 @@ bool PageInfo::IsPermissionFactoryDefault(const PermissionInfo& info,
 
 // static
 bool PageInfo::IsFileOrInternalPage(const GURL& url) {
+#if BUILDFLAG(TSEC_BRAND)
+  if (url.SchemeIs(tsec::url_utils::kHopiumUIScheme))
+    return true;
+#endif
+
   return url.SchemeIs(content::kChromeUIScheme) ||
          url.SchemeIs(content::kChromeDevToolsScheme) ||
          url.SchemeIs(content::kViewSourceScheme) ||
@@ -952,6 +961,15 @@ void PageInfo::ComputeUIInputs(const GURL& url) {
     site_connection_status_ = SITE_CONNECTION_STATUS_INTERNAL_PAGE;
     return;
   }
+
+#if BUILDFLAG(TSEC_BRAND)
+  if (url.SchemeIs(tsec::url_utils::kHopiumUIScheme)) {
+    site_identity_status_ = SITE_IDENTITY_STATUS_INTERNAL_PAGE;
+    site_connection_status_ = SITE_CONNECTION_STATUS_INTERNAL_PAGE;
+    return;
+  }
+#endif
+
 
   // Identity section.
   certificate_ = visible_security_state.certificate;

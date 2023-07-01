@@ -2114,6 +2114,11 @@ bool ChromeContentBrowserClient::ShouldTreatURLSchemeAsFirstPartyWhenTopLevel(
   // accounts on the NTP (chrome://new-tab-page), etc.
   if (is_embedded_origin_secure && scheme == content::kChromeUIScheme)
     return true;
+
+
+//  if (is_embedded_origin_secure && scheme == "total")
+//    return true;
+
 #if BUILDFLAG(ENABLE_EXTENSIONS)
   return scheme == extensions::kExtensionScheme;
 #else
@@ -2183,6 +2188,7 @@ void ChromeContentBrowserClient::GetAdditionalWebUISchemes(
   additional_schemes->emplace_back(chrome::kChromeSearchScheme);
   additional_schemes->emplace_back(dom_distiller::kDomDistillerScheme);
   additional_schemes->emplace_back(content::kChromeDevToolsScheme);
+  //additional_schemes->emplace_back("total");
 }
 
 void ChromeContentBrowserClient::GetAdditionalViewSourceSchemes(
@@ -6602,6 +6608,13 @@ bool ChromeContentBrowserClient::HandleWebUI(
     GURL* url,
     content::BrowserContext* browser_context) {
   DCHECK(browser_context);
+
+//  if (url->SchemeIs("total")) {
+//    GURL::Replacements replacements;
+//    replacements.SetSchemeStr(content::kChromeUIScheme);
+//    *url = url->ReplaceComponents(replacements);
+//    LOG(ERROR) << "REWROTE TOTAL > CHROME";
+//  }
 
   // Rewrite chrome://help to chrome://settings/help.
   if (url->SchemeIs(content::kChromeUIScheme) &&
