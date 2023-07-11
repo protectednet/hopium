@@ -515,7 +515,7 @@ deps = {
     'condition': 'build_with_hopium',
   },
   'src/hopium/tsec_branding': {
-      'url': Var('hopium_git') + '/tsec_branding.git' + '@' + 'aabcc0bd89b398ced6cbddb1f13a01848486a8a2',
+      'url': Var('hopium_git') + '/tsec_branding.git' + '@' + 'f7f6a9919b82e02aa3bad00d981b5f3874c504d9',
       'condition': 'build_with_hopium',
     },
   'src/buildtools/clang_format/script':
