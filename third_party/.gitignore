@@ -307,3 +307,5 @@
 /xdg-utils
 /xnnpack/src
 /xulrunner-sdk
+/openssl/src
+/poco/src

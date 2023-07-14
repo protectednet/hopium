@@ -511,13 +511,21 @@ allowed_hosts = [
 
 deps = {
   'src/hopium/tslib_hopium': {
-    'url': Var('hopium_git') + '/tslib_hopium.git' + '@' + '17d3f88888e651e15749edff7f4d816aa6e15496',
+    'url': Var('hopium_git') + '/tslib_hopium.git' + '@' + 'updater',
     'condition': 'build_with_hopium',
   },
   'src/hopium/tsec_branding': {
       'url': Var('hopium_git') + '/tsec_branding.git' + '@' + 'f7f6a9919b82e02aa3bad00d981b5f3874c504d9',
       'condition': 'build_with_hopium',
-    },
+  },
+  'src/third_party/poco/src': {
+    'url': 'https://github.com/pocoproject/poco.git@poco-1.12.4-release',
+    'condition': 'build_with_hopium',
+  },
+  'src/third_party/openssl/src': {
+    'url': 'https://github.com/openssl/openssl.git@openssl-3.1.1',
+    'condition': 'build_with_hopium',
+  },
   'src/buildtools/clang_format/script':
     Var('chromium_git') +
     '/external/github.com/llvm/llvm-project/clang/tools/clang-format.git@' +
