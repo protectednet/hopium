@@ -511,11 +511,11 @@ allowed_hosts = [
 
 deps = {
   'src/hopium/tslib_hopium': {
-    'url': Var('hopium_git') + '/tslib_hopium.git' + '@' + '4b08d493b220cd91ae5dcfdc0061058d056fc4fc',
+    'url': Var('hopium_git') + '/tslib_hopium.git' + '@' + 'c440c37475feeda4fba046694fe57b867dd9b5d2',
     'condition': 'build_with_hopium',
   },
   'src/hopium/tsec_branding': {
-      'url': Var('hopium_git') + '/tsec_branding.git' + '@' + '73105f27712184fe2976fa032a677fee85086df6',
+      'url': Var('hopium_git') + '/tsec_branding.git' + '@' + '262efdaa0f3e6a96463b2cbc5758117f7c951414',
       'condition': 'build_with_hopium',
   },
   'src/third_party/poco/src': {
@@ -772,7 +772,7 @@ deps = {
   },
 
   'src/chrome/test/data/autofill/captured_sites/artifacts': {
-    'url': Var('chrome_git') + '/chrome/test/captured_sites/autofill.git' + '@' + 'f6285eae8f95b48a401899f833bcb9909e0e25a9',
+    'url': Var('chrome_git') + '/chrome/test/captured_sites/autofill.git' + '@' + 'a5169e20830bb536dbd1ff55370919d3570764bc',
     'condition': 'checkout_chromium_autofill_test_dependencies',
   },
 
