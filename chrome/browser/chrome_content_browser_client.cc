@@ -4822,7 +4822,7 @@ bool ChromeContentBrowserClient::PreSpawnChild(
 
 #if !defined(OFFICIAL_BUILD)
   // Disable renderer code integrity when Application Verifier or pageheap are
-  // enabled for totalbrowser.exe to avoid renderer crashes. https://crbug.com/1004989
+  // enabled for chrome.exe to avoid renderer crashes. https://crbug.com/1004989
   if (base::win::IsAppVerifierEnabled(chrome::kBrowserProcessExecutableName))
     enforce_code_integrity = false;
 #endif  // !defined(OFFICIAL_BUILD)
@@ -4830,7 +4830,7 @@ bool ChromeContentBrowserClient::PreSpawnChild(
   if (!enforce_code_integrity)
     return true;
 
-  // Only enable signing mitigation if launching from totalbrowser.exe.
+  // Only enable signing mitigation if launching from chrome.exe.
   base::FilePath exe_path;
   if (!base::PathService::Get(base::FILE_EXE, &exe_path))
     return true;
