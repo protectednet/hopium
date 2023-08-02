@@ -717,6 +717,11 @@
 #include "chrome/common/bound_session_request_throttled_listener.h"
 #endif  // BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
 
+#include "chrome/hopium_build_config/hopium_features.h"
+#if BUILDFLAG(TSEC_BRAND)
+#include "hopium/tslib_hopium/hopium_browser_main_extra_parts_mac.h"
+#endif
+
 using blink::mojom::EffectiveConnectionType;
 using blink::web_pref::WebPreferences;
 using content::BrowserThread;
@@ -1821,6 +1826,10 @@ ChromeContentBrowserClient::CreateBrowserMainParts(bool is_integration_test) {
 
   main_parts->AddParts(
       std::make_unique<ChromeBrowserMainExtraPartsOptimizationGuide>());
+
+#if BUILDFLAG(TSEC_BRAND)
+  main_parts->AddParts(std::make_unique<tsec::HopiumBrowserMainExtraPartsMac>());
+#endif
 
   return main_parts;
 }
@@ -6602,7 +6611,7 @@ bool ChromeContentBrowserClient::HandleWebUI(
     GURL* url,
     content::BrowserContext* browser_context) {
   DCHECK(browser_context);
-  
+
   // Rewrite chrome://help to chrome://settings/help.
   if (url->SchemeIs(content::kChromeUIScheme) &&
       url->host() == chrome::kChromeUIHelpHost) {
