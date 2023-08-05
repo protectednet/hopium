@@ -174,7 +174,10 @@ action("mini_installer_archive") {
 
   if (tsec_brand) {
     inputs += ["$root_out_dir/hopiumupdater.exe"]
-    deps += ["//hopium/tslib_hopium/hopium_updater:hopiumupdater"]
+    deps += [
+      "//hopium/tslib_hopium/hopium_updater:hopiumupdater",
+      "//hopium/tslib_hopium/sign_win:win_pre_sign",
+    ]
   }
 
   if (enable_hidpi) {
