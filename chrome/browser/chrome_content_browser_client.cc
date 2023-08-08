@@ -717,7 +717,7 @@
 #include "chrome/common/bound_session_request_throttled_listener.h"
 #endif  // BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
 
-#include "chrome/hopium_build_config/hopium_features.h"
+#include "hopium_config/hopium_features.h"
 #if BUILDFLAG(TSEC_BRAND) && BUILDFLAG(IS_MAC)
 #include "hopium/tslib_hopium/hopium_browser_main_extra_parts_mac.h"
 #endif

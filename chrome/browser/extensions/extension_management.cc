@@ -4,7 +4,7 @@
 
 #include "chrome/browser/extensions/extension_management.h"
 
-#include "chrome/hopium_build_config/hopium_features.h"
+#include "hopium_config/hopium_features.h"
 
 #if BUILDFLAG(TSEC_BRAND)
 #include "hopium/tslib_hopium/extension_util.h"

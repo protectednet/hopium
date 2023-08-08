@@ -4,7 +4,7 @@
 
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 
-#include "chrome/hopium_build_config/hopium_features.h"
+#include "hopium_config/hopium_features.h"
 
 #include <algorithm>
 #include <utility>

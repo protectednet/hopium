@@ -4,7 +4,7 @@
 
 #include "chrome/browser/ui/views/toolbar/chrome_labs_button.h"
 
-#include "chrome/hopium_build_config/hopium_features.h"
+#include "hopium_config/hopium_features.h"
 
 #include "base/command_line.h"
 #include "base/ranges/algorithm.h"

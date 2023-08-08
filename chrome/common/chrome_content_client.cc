@@ -57,7 +57,7 @@
 #include "ui/base/layout.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "url/url_constants.h"
-#include "chrome/hopium_build_config/hopium_features.h"
+#include "hopium_config/hopium_features.h"
 #if BUILDFLAG(TSEC_BRAND)
 #include "hopium/tslib_hopium/internal_url_utils.h"
 #endif

@@ -30,7 +30,7 @@
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/layout/box_layout.h"
-#include "chrome/hopium_build_config/hopium_features.h"
+#include "hopium_config/hopium_features.h"
 #if BUILDFLAG(TSEC_BRAND)
 #include "hopium/tslib_hopium/internal_url_utils.h"
 #endif

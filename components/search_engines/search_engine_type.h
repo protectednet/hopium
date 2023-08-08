@@ -5,7 +5,7 @@
 #ifndef COMPONENTS_SEARCH_ENGINES_SEARCH_ENGINE_TYPE_H_
 #define COMPONENTS_SEARCH_ENGINES_SEARCH_ENGINE_TYPE_H_
 
-#include "chrome/hopium_build_config/hopium_features.h"
+#include "hopium_config/hopium_features.h"
 
 // Enum to record the user's default search engine choice in UMA.
 // These values are persisted to logs. Entries should not be renumbered and

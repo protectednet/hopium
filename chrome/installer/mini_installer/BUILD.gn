@@ -13,7 +13,7 @@ import("//third_party/icu/config.gni")
 import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
 import("//ui/base/ui_features.gni")
 import("//v8/gni/v8.gni")
-import("//chrome/hopium_build_config/hopium_features.gni")
+import("//hopium_config/hopium_features.gni")
 
 declare_args() {
   # The Chrome archive is maximally compressed in official builds to reduce the

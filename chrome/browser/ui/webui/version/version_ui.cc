@@ -69,7 +69,7 @@
 #endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
 
 
-#include "chrome/hopium_build_config/hopium_features.h"
+#include "hopium_config/hopium_features.h"
 #if BUILDFLAG(TSEC_BRAND)
 #include "hopium/tslib_hopium/hopium_version_numbers.h"
 #endif

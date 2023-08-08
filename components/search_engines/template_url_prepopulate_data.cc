@@ -15,7 +15,7 @@
 #include "components/search_engines/template_url_data.h"
 #include "components/search_engines/template_url_data_util.h"
 
-#include "chrome/hopium_build_config/hopium_features.h"
+#include "hopium_config/hopium_features.h"
 
 namespace TemplateURLPrepopulateData {
 

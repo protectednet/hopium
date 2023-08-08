@@ -116,7 +116,7 @@
 #include "third_party/blink/public/mojom/runtime_feature_state/runtime_feature_state.mojom.h"
 #include "url/url_constants.h"
 
-#include "chrome/hopium_build_config/hopium_features.h"
+#include "hopium_config/hopium_features.h"
 #if BUILDFLAG(TSEC_BRAND)
 #include "hopium/tslib_hopium/internal_url_utils.h"
 #endif

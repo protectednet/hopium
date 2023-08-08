@@ -53,7 +53,7 @@ if (is_android) {
   import("//third_party/icu/config.gni")
 }
 
-import("//chrome/hopium_build_config/hopium_features.gni")
+import("//hopium_config/hopium_features.gni")
 
 declare_args() {
   # Indicates whether keystone registration framework should be enabled (see

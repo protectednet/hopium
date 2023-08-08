@@ -78,7 +78,7 @@
 #include "third_party/boringssl/src/include/openssl/ssl.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "url/origin.h"
-#include "chrome/hopium_build_config/hopium_features.h"
+#include "hopium_config/hopium_features.h"
 #if BUILDFLAG(TSEC_BRAND)
 #include "hopium/tslib_hopium/internal_url_utils.h"
 #endif

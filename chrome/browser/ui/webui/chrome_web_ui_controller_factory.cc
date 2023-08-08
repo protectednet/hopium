@@ -412,7 +412,7 @@
 #include "chrome/browser/ui/webui/ash/chromebox_for_meetings/network_settings_dialog.h"
 #endif  // BUILDFLAG(PLATFORM_CFM)
 
-#include "chrome/hopium_build_config/hopium_features.h"
+#include "hopium_config/hopium_features.h"
 #if BUILDFLAG(TSEC_BRAND)
 #include "hopium/tslib_hopium/hopium_web_ui_controller_factory.h"
 #endif

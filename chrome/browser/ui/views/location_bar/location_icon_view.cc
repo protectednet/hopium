@@ -44,7 +44,7 @@
 #include "ui/views/style/platform_style.h"
 #include "ui/views/view_class_properties.h"
 
-#include "chrome/hopium_build_config/hopium_features.h"
+#include "hopium_config/hopium_features.h"
 #if BUILDFLAG(TSEC_BRAND)
 #include "hopium/tslib_hopium/internal_url_utils.h"
 #endif

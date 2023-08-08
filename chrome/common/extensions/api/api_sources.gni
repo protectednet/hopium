@@ -6,7 +6,7 @@ import("//build/config/chromeos/ui_mode.gni")
 import("//build/config/features.gni")
 import("//chrome/common/features.gni")
 import("//pdf/features.gni")
-import("//chrome/hopium_build_config/hopium_features.gni")
+import("//hopium_config/hopium_features.gni")
 
 assert(enable_extensions)
 

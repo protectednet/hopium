@@ -9,13 +9,13 @@ buildflag_header("hopium_features") {
     ]
 }
 
-static_library("hopium_config") {
-    sources = [
-        "hopium_config.h",
-        "hopium_config.cc"
-    ]
+# static_library("hopium_config") {
+#     sources = [
+#         "hopium_config.h",
+#         "hopium_config.cc"
+#     ]
 
-    deps = [
-        "//chrome/hopium_build_config:hopium_features"
-    ]
-}
+#     deps = [
+#         ":hopium_features"
+#     ]
+# }
