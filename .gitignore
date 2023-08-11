@@ -3,6 +3,7 @@
 /chrome/browser/extensions/api/hopium/
 /chrome/common/extensions/api/hopium.json
 .private/
+/.clang
 
 /client-py/
 *.bak
