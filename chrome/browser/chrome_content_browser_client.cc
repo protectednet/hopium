@@ -718,8 +718,8 @@
 #endif  // BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
 
 #include "hopium_config/hopium_features.h"
-#if BUILDFLAG(TSEC_BRAND) && BUILDFLAG(IS_MAC)
-#include "hopium/tslib_hopium/hopium_browser_main_extra_parts_mac.h"
+#if BUILDFLAG(TSEC_BRAND)
+#include "hopium/tslib_hopium/extra_parts.h"
 #endif
 
 using blink::mojom::EffectiveConnectionType;
@@ -1827,8 +1827,8 @@ ChromeContentBrowserClient::CreateBrowserMainParts(bool is_integration_test) {
   main_parts->AddParts(
       std::make_unique<ChromeBrowserMainExtraPartsOptimizationGuide>());
 
-#if BUILDFLAG(TSEC_BRAND) && BUILDFLAG(IS_MAC)
-  main_parts->AddParts(std::make_unique<tsec::HopiumBrowserMainExtraPartsMac>());
+#if BUILDFLAG(TSEC_BRAND)
+  tsec::HopiumExtraPartsFactory::AddExtraParts(main_parts);
 #endif
 
   return main_parts;
