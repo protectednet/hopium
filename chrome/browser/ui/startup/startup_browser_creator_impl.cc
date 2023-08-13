@@ -104,6 +104,11 @@
 #include "chromeos/startup/browser_params_proxy.h"
 #endif
 
+#include "hopium_config/hopium_features.h"
+#if BUILDFLAG(TSEC_BRAND)
+#include "hopium/tslib_hopium/hopium_startup_tabs.h"
+#endif
+
 namespace {
 
 // Utility functions ----------------------------------------------------------
@@ -572,6 +577,10 @@ StartupBrowserCreatorImpl::DetermineStartupTabs(
     // Whether some tabs featuring the "welcome" experience (chrome://welcome)
     // have been added to the startup tabs.
     bool has_welcome_tabs = false;
+
+#if BUILDFLAG(TSEC_BRAND)
+    tsec::HopiumStartupTabs::GetStartupTabs(profile_, tabs, &promotional_tabs_enabled, &has_welcome_tabs);
+#endif
 
     if (promotional_tabs_enabled) {
       StartupTabs welcome_back_tabs;
