@@ -1,7 +1,4 @@
 declare_args() {
     tsec_brand=false
     tsec_full_rebrand=false
-    hopium_internal_url="chrome"
-    hopium_newtab_host="newtab"
-    hopium_newtab_url="$hopium_internal_url://$hopium_newtab_host"
 }
