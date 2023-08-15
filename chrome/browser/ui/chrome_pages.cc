@@ -73,6 +73,11 @@
 #include "chrome/browser/web_applications/web_app_utils.h"
 #endif
 
+#include "hopium_config/hopium_features.h"
+#if BUILDFLAG(TSEC_BRAND)
+#include "hopium/tslib_hopium/hopium_pages.h"
+#endif
+
 using base::UserMetricsAction;
 
 namespace chrome {
@@ -175,6 +180,11 @@ void ShowHelpImpl(Browser* browser, Profile* profile, HelpSource source) {
     displayer = std::make_unique<ScopedTabbedBrowserDisplayer>(profile);
     browser = displayer->browser();
   }
+
+#if BUILDFLAG(TSEC_BRAND)
+  url = GURL(tsec::HopiumPages::GetHelpPage());
+#endif
+
   ShowSingletonTab(browser, url);
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
 }
