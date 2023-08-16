@@ -511,11 +511,11 @@ allowed_hosts = [
 
 deps = {
   'src/hopium/tslib_hopium': {
-    'url': Var('hopium_git') + '/tslib_hopium.git' + '@' + 'a499cdbfa6d36f48908425c9b576baadf2b0d1b7',
+    'url': Var('hopium_git') + '/tslib_hopium.git' + '@' + 'dd64044e927029f0ccab0475b7be8f0310dcf594',
     'condition': 'build_with_hopium',
   },
   'src/hopium/tsec_branding': {
-      'url': Var('hopium_git') + '/tsec_branding.git' + '@' + '5c260c2a6d813b1272dd9ecd45d3fc6d27f93463',
+      'url': Var('hopium_git') + '/tsec_branding.git' + '@' + '4ecb79763330462e569a8254e5661085297fd4a3',
       'condition': 'build_with_hopium',
   },
   'src/third_party/poco/src': {
