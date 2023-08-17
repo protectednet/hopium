@@ -511,7 +511,7 @@ allowed_hosts = [
 
 deps = {
   'src/hopium/tslib_hopium': {
-    'url': Var('hopium_git') + '/tslib_hopium.git' + '@' + 'dd64044e927029f0ccab0475b7be8f0310dcf594',
+    'url': Var('hopium_git') + '/tslib_hopium.git' + '@' + 'b0f092cde7f9f55ef46c288899b1ffbe7cd31015',
     'condition': 'build_with_hopium',
   },
   'src/hopium/tsec_branding': {
