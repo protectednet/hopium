@@ -1333,7 +1333,7 @@ std::vector<std::unique_ptr<TemplateURLData>> GetPrepopulationSetFromCountryID(
   std::vector<std::unique_ptr<TemplateURLData>> t_urls;
 
 #if BUILDFLAG(TSEC_FULL_REBRAND)
-  t_urls.push_back(TemplateURLDataFromPrepopulatedEngine(startpage));
+  t_urls.push_back(TemplateURLDataFromPrepopulatedEngine(hopium));
 #endif
 
   for (size_t i = 0; i < num_engines; ++i)
@@ -1392,7 +1392,7 @@ std::vector<std::unique_ptr<TemplateURLData>> GetPrepopulatedEngines(
   if (default_search_provider_index) {
     #if BUILDFLAG(TSEC_FULL_REBRAND)
     const auto itr =
-        base::ranges::find(t_urls, startpage.id, &TemplateURLData::prepopulate_id);
+        base::ranges::find(t_urls, hopium.id, &TemplateURLData::prepopulate_id);
     #else
     const auto itr =
         base::ranges::find(t_urls, google.id, &TemplateURLData::prepopulate_id);
