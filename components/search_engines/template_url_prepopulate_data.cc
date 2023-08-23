@@ -15,6 +15,8 @@
 #include "components/search_engines/template_url_data.h"
 #include "components/search_engines/template_url_data_util.h"
 
+#include "hopium_config/hopium_features.h"
+
 namespace TemplateURLPrepopulateData {
 
 // Helpers --------------------------------------------------------------------
@@ -1329,6 +1331,11 @@ std::vector<std::unique_ptr<TemplateURLData>> GetPrepopulationSetFromCountryID(
   }
 
   std::vector<std::unique_ptr<TemplateURLData>> t_urls;
+
+#if BUILDFLAG(TSEC_FULL_REBRAND)
+  t_urls.push_back(TemplateURLDataFromPrepopulatedEngine(hopium));
+#endif
+
   for (size_t i = 0; i < num_engines; ++i)
     t_urls.push_back(TemplateURLDataFromPrepopulatedEngine(*engines[i]));
   return t_urls;
@@ -1383,8 +1390,14 @@ std::vector<std::unique_ptr<TemplateURLData>> GetPrepopulatedEngines(
         country_codes::GetCountryIDFromPrefs(prefs));
   }
   if (default_search_provider_index) {
+    #if BUILDFLAG(TSEC_FULL_REBRAND)
+    const auto itr =
+        base::ranges::find(t_urls, hopium.id, &TemplateURLData::prepopulate_id);
+    #else
     const auto itr =
         base::ranges::find(t_urls, google.id, &TemplateURLData::prepopulate_id);
+    #endif
+
     *default_search_provider_index =
         itr == t_urls.end() ? 0 : std::distance(t_urls.begin(), itr);
   }

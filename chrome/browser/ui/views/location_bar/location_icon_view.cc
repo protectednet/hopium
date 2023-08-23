@@ -44,6 +44,11 @@
 #include "ui/views/style/platform_style.h"
 #include "ui/views/view_class_properties.h"
 
+#include "hopium_config/hopium_features.h"
+#if BUILDFLAG(TSEC_BRAND)
+#include "hopium/tslib_hopium/internal_url_utils.h"
+#endif
+
 using content::WebContents;
 using security_state::SecurityLevel;
 
@@ -192,6 +197,11 @@ bool LocationIconView::GetShowText() const {
     return true;
   }
 
+#if BUILDFLAG(TSEC_BRAND)
+  if (tsec::url_utils::UrlHasHopiumScheme(url))
+    return true;
+#endif
+
   return !location_bar_model->GetSecureDisplayText().empty();
 }
 
@@ -206,6 +216,13 @@ std::u16string LocationIconView::GetText() const {
   if (delegate_->GetLocationBarModel()->GetURL().SchemeIs(
           content::kChromeUIScheme))
     return l10n_util::GetStringUTF16(IDS_SHORT_PRODUCT_NAME);
+
+  #if BUILDFLAG(TSEC_BRAND)
+  if (tsec::url_utils::UrlHasHopiumScheme(
+        delegate_->GetLocationBarModel()->GetURL())) {
+    return l10n_util::GetStringUTF16(IDS_SHORT_PRODUCT_NAME);
+  }
+  #endif
 
   if (delegate_->GetLocationBarModel()->GetURL().SchemeIs(url::kFileScheme))
     return l10n_util::GetStringUTF16(IDS_OMNIBOX_FILE);

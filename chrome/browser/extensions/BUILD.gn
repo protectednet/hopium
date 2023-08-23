@@ -16,6 +16,7 @@ import("//printing/buildflags/buildflags.gni")
 import("//rlz/buildflags/buildflags.gni")
 import("//testing/libfuzzer/fuzzer_test.gni")
 import("//third_party/protobuf/proto_library.gni")
+import("//hopium_config/hopium_features.gni")
 
 assert(enable_extensions)
 
@@ -1396,6 +1397,15 @@ static_library("extensions") {
     deps += [ "//third_party/libbrlapi" ]
   } else {
     sources += [ "api/braille_display_private/braille_controller_stub.cc" ]
+  }
+
+  if (tsec_brand) {
+    sources += [
+      "api/hopium/hopium_api.h",
+      "api/hopium/hopium_api.cc"
+    ]
+
+    deps += ["//hopium/tslib_hopium/extensions/api/implementation:tsec_extensions_impl"]
   }
 }
 

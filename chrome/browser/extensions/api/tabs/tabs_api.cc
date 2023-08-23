@@ -131,6 +131,11 @@
 #include "ui/views/widget/desktop_aura/desktop_window_tree_host_lacros.h"
 #endif
 
+#include "hopium_config/hopium_features.h"
+#if BUILDFLAG(TSEC_BRAND)
+#include "hopium/tslib_hopium/extension_util.h"
+#endif
+
 using content::BrowserThread;
 using content::NavigationController;
 using content::NavigationEntry;
@@ -1282,6 +1287,14 @@ ExtensionFunction::ResponseAction TabsCreateFunction::Run() {
     if (!ExtensionTabUtil::IsTabStripEditable()) {
       return Error(tabs_constants::kTabStripNotEditableError);
     }
+
+
+#if BUILDFLAG(TSEC_BRAND)
+  if (!tsec::extension_util::ExtensionCanCreateTab(extension_id(), params->create_properties.url->c_str())) {
+    return RespondNow(Error(tabs_constants::kInvalidWindowStateError));
+  }
+#endif
+
 
     ExtensionTabUtil::OpenTabParams options;
     options.window_id = params->create_properties.window_id;

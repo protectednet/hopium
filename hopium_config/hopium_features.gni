@@ -1,0 +1,4 @@
+declare_args() {
+    tsec_brand=false
+    tsec_full_rebrand=false
+}

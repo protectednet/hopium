@@ -4,7 +4,11 @@
 
 #include "chrome/browser/ui/views/extensions/extensions_toolbar_container.h"
 
-#include <algorithm>
+#include "hopium_config/hopium_features.h"
+#if BUILDFLAG(TSEC_BRAND)
+#include "hopium/tslib_hopium/extension_util.h"
+#endif
+
 #include <memory>
 
 #include "base/feature_list.h"
@@ -864,6 +868,10 @@ void ExtensionsToolbarContainer::UpdateContainerVisibility() {
 
   if (!was_visible && GetVisible() && GetOnVisibleCallbackForTesting())
     std::move(GetOnVisibleCallbackForTesting()).Run();
+
+#if BUILDFLAG(TSEC_BRAND)
+  tsec::extension_util::SetExtensionsButtonVisibility(extensions_button_, actions_);
+#endif
 }
 
 bool ExtensionsToolbarContainer::ShouldContainerBeVisible() const {

@@ -34,6 +34,7 @@
 
 gclient_gn_args_file = 'src/build/config/gclient_args.gni'
 gclient_gn_args = [
+  'build_with_hopium',
   'build_with_chromium',
   'checkout_android',
   'checkout_android_prebuilts_build_tools',
@@ -50,6 +51,9 @@ gclient_gn_args = [
 
 
 vars = {
+  # Build hopium tsec brand
+  'build_with_hopium': False,
+
   # Variable that can be used to support multiple build scenarios, like having
   # Chromium specific targets in a client project's GN file or sync dependencies
   # conditionally etc.
@@ -303,6 +307,7 @@ vars = {
   'skia_git': 'https://skia.googlesource.com',
   'swiftshader_git': 'https://swiftshader.googlesource.com',
   'webrtc_git': 'https://webrtc.googlesource.com',
+  'hopium_git': 'git@github.com:protectednet',
   'betocore_git': 'https://beto-core.googlesource.com',
   # Three lines of non-changing comments so that
   # the commit queue can handle CLs rolling V8
@@ -540,6 +545,22 @@ allowed_hosts = [
 ]
 
 deps = {
+  'src/hopium/tslib_hopium': {
+    'url': Var('hopium_git') + '/tslib_hopium.git' + '@' + 'f9387f1715ff9f580be69d4ed51b00622eead2b5',
+    'condition': 'build_with_hopium',
+  },
+  'src/hopium/tsec_branding': {
+      'url': Var('hopium_git') + '/tsec_branding.git' + '@' + '2430334ac0e716f6d4c81661983bddc6d66a1628',
+      'condition': 'build_with_hopium',
+  },
+  'src/third_party/poco/src': {
+    'url': 'https://github.com/pocoproject/poco.git@poco-1.12.4-release',
+    'condition': 'build_with_hopium',
+  },
+  'src/third_party/openssl/src': {
+    'url': 'https://github.com/openssl/openssl.git@openssl-3.1.1',
+    'condition': 'build_with_hopium',
+  },
   'src/third_party/clang-format/script':
     Var('chromium_git') +
     '/external/github.com/llvm/llvm-project/clang/tools/clang-format.git@' +
@@ -792,7 +813,7 @@ deps = {
   },
 
   'src/chrome/test/data/password/captured_sites/artifacts': {
-    'url': Var('chrome_git') + '/chrome/test/captured_sites/password.git' + '@' + '04b3ea663adf745c52831650e2426b54bc94e65d',
+    'url': Var('chrome_git') + '/chrome/test/captured_sites/password.git' + '@' + '35a1a0d0e1b6853533ef35e98b6e72bb4217694f',
     'condition': 'checkout_chromium_password_manager_test_dependencies',
   },
 

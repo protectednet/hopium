@@ -67,7 +67,16 @@ about:version template page
         <div id="copyright">$i18n{copyright}</div>
       </div>
       <table id="inner" cellpadding="0" cellspacing="0" border="0">
-        <tr><td class="label">$i18n{application_label}</td>
+<if expr="tsec_brand">
+        <tr>
+          <td class="label">$i18n{application_label}</td>
+          <td class="version" id="version_hopium">
+            <span>$i18n{hopium_version}</span>
+          </td>
+        </tr>
+</if>
+
+        <tr><td class="label">Chromium</td>
           <td class="version" id="version">
             <span id="copy-content">
               <span>$i18n{version}</span>

@@ -573,6 +573,7 @@ source_set("browser_sources") {
   ]
 
   deps = [
+    "//hopium_config:hopium_features",
     "//base",
     "//base:i18n",
     "//build:chromeos_buildflags",

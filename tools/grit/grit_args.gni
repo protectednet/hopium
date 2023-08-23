@@ -6,6 +6,7 @@ import("//build/config/chrome_build.gni")
 import("//build/config/chromeos/ui_mode.gni")
 import("//build/config/devtools.gni")
 import("//build/config/ui.gni")
+import("//hopium_config/hopium_features.gni")
 
 shared_intermediate_dir = rebase_path(root_gen_dir, root_build_dir)
 devtools_grd_path = "$shared_intermediate_dir/$devtools_grd_location"
@@ -42,6 +43,8 @@ _grit_defines = [
 if (!is_android) {
   _grit_defines += [ "scale_factors=2x" ]
 }
+
+_grit_defines += ["tsec_brand=$tsec_brand"]
 
 # Environment variables to be used by grit and its subproceses.
 

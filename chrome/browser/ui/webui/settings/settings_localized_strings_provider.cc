@@ -168,6 +168,11 @@
 #include "components/supervised_user/core/browser/supervised_user_service.h"
 #endif
 
+#include "hopium_config/hopium_features.h"
+#if BUILDFLAG(TSEC_BRAND)
+#include "hopium/tslib_hopium/hopium_version_ui.h"
+#endif
+
 namespace settings {
 namespace {
 
@@ -349,6 +354,10 @@ void AddAboutStrings(content::WebUIDataSource* html_source, Profile* profile) {
 #endif
 
   std::u16string browser_version = VersionUI::GetAnnotatedVersionStringForUi();
+
+#if BUILDFLAG(TSEC_BRAND)
+  html_source->AddString("aboutHopiumVersion", tsec::HopiumVersionUI::GetAnnotatedVersionStringForUi());
+#endif
 
   html_source->AddString("aboutBrowserVersion", browser_version);
   html_source->AddString(

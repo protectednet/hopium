@@ -24,6 +24,7 @@ import("//printing/buildflags/buildflags.gni")
 import("//testing/libfuzzer/fuzzer_test.gni")
 import("//third_party/blink/public/public_features.gni")
 import("//tools/ipc_fuzzer/ipc_fuzzer.gni")
+import("//hopium_config/hopium_features.gni")
 if (is_mac) {
   import("//content/public/app/mac_helpers.gni")
 }
@@ -304,6 +305,10 @@ source_set("browser") {
     "//ui/base/cursor",
     "//ui/base/dragdrop/mojom:mojom_headers",
   ]
+
+  if (tsec_brand) {
+    public_deps += ["//hopium/tslib_hopium:tsec_url"]
+  }
 
   sources = [
     "$target_gen_dir/devtools/protocol/audits.cc",

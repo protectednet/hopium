@@ -299,6 +299,11 @@
 #include "chrome/browser/ui/webui/ash/chromebox_for_meetings/network_settings_dialog.h"
 #endif  // BUILDFLAG(PLATFORM_CFM)
 
+#include "hopium_config/hopium_features.h"
+#if BUILDFLAG(TSEC_BRAND)
+#include "hopium/tslib_hopium/hopium_web_ui_controller_factory.h"
+#endif
+
 #if BUILDFLAG(ENABLE_WAFFLE_DESKTOP)
 #include "chrome/browser/ui/webui/waffle/waffle_ui.h"
 #endif
@@ -982,8 +987,12 @@ void ChromeWebUIControllerFactory::GetFaviconForURL(
 
 // static
 ChromeWebUIControllerFactory* ChromeWebUIControllerFactory::GetInstance() {
+  #if BUILDFLAG(TSEC_BRAND)
+  return tsec::HopiumWebUIControllerFactory::GetInstance();
+  #else
   static base::NoDestructor<ChromeWebUIControllerFactory> instance;
   return instance.get();
+  #endif
 }
 
 // static

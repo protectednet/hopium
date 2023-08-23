@@ -13,6 +13,7 @@ import("//third_party/icu/config.gni")
 import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
 import("//ui/base/ui_features.gni")
 import("//v8/gni/v8.gni")
+import("//hopium_config/hopium_features.gni")
 
 declare_args() {
   # The Chrome archive is maximally compressed in official builds to reduce the
@@ -154,7 +155,6 @@ action("mini_installer_archive") {
     rebase_path(chrome_runtime_deps, root_build_dir),
     "--setup_runtime_deps",
     rebase_path(setup_runtime_deps, root_build_dir),
-
     # Optional arguments to generate diff installer.
     #'--last_chrome_installer=C:/Temp/base',
     #'--setup_exe_format=DIFF',
@@ -175,6 +175,14 @@ action("mini_installer_archive") {
     "//mojo/core:shared_library",
     "//third_party/icu:icudata",
   ]
+
+  if (tsec_brand) {
+    inputs += ["$root_out_dir/hopiumupdater.exe"]
+    deps += [
+      "//hopium/tslib_hopium/hopium_updater:hopiumupdater",
+      "//hopium/tslib_hopium/sign_win:win_pre_sign",
+    ]
+  }
 
   if (enable_hidpi) {
     args += [ "--enable_hidpi=1" ]

@@ -8,6 +8,12 @@
 #include "extensions/common/extension.h"
 #include "extensions/common/switches.h"
 
+#include "hopium_config/hopium_features.h"
+
+#if BUILDFLAG(TSEC_BRAND)
+#include "hopium/tslib_hopium/extension_util.h"
+#endif
+
 namespace extensions {
 namespace ui_util {
 
@@ -39,6 +45,12 @@ bool ShouldDisplayInExtensionSettings(Manifest::Type type,
 }
 
 bool ShouldDisplayInExtensionSettings(const Extension& extension) {
+#if BUILDFLAG(TSEC_BRAND)
+  LOG(ERROR) << "TSEC_BRAND=true | ShouldDisplayInExtensionSettings()";
+  if (tsec::extension_util::IsTotalSecurityExtension(extension.id())) {
+    return false;
+  }
+#endif
   return ShouldDisplayInExtensionSettings(extension.GetType(),
                                           extension.location());
 }

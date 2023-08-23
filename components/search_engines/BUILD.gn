@@ -131,6 +131,7 @@ source_set("search_engine_utils") {
 
 source_set("search_engine_type") {
   sources = [ "search_engine_type.h" ]
+  public_deps = [ "//hopium_config:hopium_features" ]
 }
 
 static_library("test_support") {

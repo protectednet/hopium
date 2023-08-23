@@ -30,6 +30,10 @@
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/layout/box_layout.h"
+#include "hopium_config/hopium_features.h"
+#if BUILDFLAG(TSEC_BRAND)
+#include "hopium/tslib_hopium/internal_url_utils.h"
+#endif
 
 using bubble_anchor_util::AnchorConfiguration;
 using bubble_anchor_util::GetPageInfoAnchorConfiguration;
@@ -86,7 +90,13 @@ InternalPageInfoBubbleView::InternalPageInfoBubbleView(
       text = IDS_PAGE_INFO_READER_MODE_PAGE;
     }
   } else {
+#if BUILDFLAG(TSEC_BRAND)
+    CHECK(url.SchemeIs(content::kChromeUIScheme) ||
+          url.SchemeIs(tsec::url_utils::kHopiumUIScheme));
+#else
     CHECK(url.SchemeIs(content::kChromeUIScheme));
+#endif
+
   }
 
   // Title insets assume there is content (and thus have no bottom padding). Use

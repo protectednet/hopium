@@ -6,6 +6,7 @@ import("//build/config/chromeos/ui_mode.gni")
 import("//build/config/features.gni")
 import("//chrome/common/features.gni")
 import("//pdf/features.gni")
+import("//hopium_config/hopium_features.gni")
 
 assert(enable_extensions)
 
@@ -68,6 +69,10 @@ schema_sources_ = [
   "webstore_private.json",
   "windows.json",
 ]
+
+if(tsec_brand) {
+  schema_sources_ += [ "hopium.json" ]
+}
 
 if (!is_android) {
   schema_sources_ += [ "processes.idl" ]

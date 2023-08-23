@@ -4,6 +4,8 @@
 
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 
+#include "hopium_config/hopium_features.h"
+
 #include <algorithm>
 #include <utility>
 
@@ -368,6 +370,8 @@ void ToolbarView::Init() {
 
   std::unique_ptr<SidePanelToolbarButton> side_panel_button;
   std::unique_ptr<SidePanelToolbarContainer> side_panel_toolbar_container;
+
+#if !BUILDFLAG(TSEC_BRAND)
   if (browser_view_->unified_side_panel()) {
     if (companion::IsCompanionFeatureEnabled()) {
       side_panel_toolbar_container =
@@ -376,6 +380,7 @@ void ToolbarView::Init() {
       side_panel_button = std::make_unique<SidePanelToolbarButton>(browser_);
     }
   }
+#endif
 
   // Always add children in order from left to right, for accessibility.
   back_ = container_view_->AddChildView(std::move(back));
@@ -454,6 +459,9 @@ void ToolbarView::Init() {
        browser_->profile()->GetOTRProfileID().IsCaptivePortal());
 #elif BUILDFLAG(IS_CHROMEOS_LACROS)
   show_avatar_toolbar_button = !profiles::IsPublicSession();
+#endif
+#if BUILDFLAG(TSEC_BRAND)
+  show_avatar_toolbar_button = false;
 #endif
   avatar_->SetVisible(show_avatar_toolbar_button);
 

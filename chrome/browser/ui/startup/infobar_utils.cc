@@ -4,6 +4,8 @@
 
 #include "chrome/browser/ui/startup/infobar_utils.h"
 
+#include "hopium_config/hopium_features.h"
+
 #include "base/command_line.h"
 #include "build/buildflag.h"
 #include "build/chromeos_buildflags.h"
@@ -133,8 +135,10 @@ void AddInfoBarsIfNecessary(Browser* browser,
     infobars::ContentInfoBarManager* infobar_manager =
         infobars::ContentInfoBarManager::FromWebContents(web_contents);
 
+#if !BUILDFLAG(TSEC_BRAND)
     if (!google_apis::HasAPIKeyConfigured())
       GoogleApiKeysInfoBarDelegate::Create(infobar_manager);
+#endif
 
     if (ObsoleteSystem::IsObsoleteNowOrSoon()) {
       PrefService* local_state = g_browser_process->local_state();

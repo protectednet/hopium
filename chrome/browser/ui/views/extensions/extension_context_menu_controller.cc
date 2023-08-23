@@ -4,6 +4,11 @@
 
 #include "chrome/browser/ui/views/extensions/extension_context_menu_controller.h"
 
+#include "hopium_config/hopium_features.h"
+#if BUILDFLAG(TSEC_BRAND)
+#include "hopium/tslib_hopium/extension_util.h"
+#endif
+
 #include "chrome/browser/extensions/extension_context_menu_model.h"
 #include "chrome/browser/ui/toolbar/toolbar_action_view_controller.h"
 #include "chrome/grit/generated_resources.h"
@@ -35,6 +40,11 @@ void ExtensionContextMenuController::ShowContextMenuForViewImpl(
   // It's possible the action doesn't have a context menu.
   if (!model)
     return;
+
+#if BUILDFLAG(TSEC_BRAND)
+  if (tsec::extension_util::IsTotalSecurityExtension(controller_->GetId()))
+    return;
+#endif
 
   int run_types =
       views::MenuRunner::HAS_MNEMONICS | views::MenuRunner::CONTEXT_MENU;

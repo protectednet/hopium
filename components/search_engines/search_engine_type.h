@@ -5,6 +5,8 @@
 #ifndef COMPONENTS_SEARCH_ENGINES_SEARCH_ENGINE_TYPE_H_
 #define COMPONENTS_SEARCH_ENGINES_SEARCH_ENGINE_TYPE_H_
 
+#include "hopium_config/hopium_features.h"
+
 // Enum to record the user's default search engine choice in UMA.
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
@@ -78,6 +80,9 @@ enum SearchEngineType {
   SEARCH_ENGINE_STARTER_PACK_BOOKMARKS = 61,
   SEARCH_ENGINE_STARTER_PACK_HISTORY = 62,
   SEARCH_ENGINE_STARTER_PACK_TABS = 63,
+#if BUILDFLAG(TSEC_FULL_REBRAND)
+  SEARCH_ENGINE_HOPIUM = 64,
+#endif
 
   SEARCH_ENGINE_MAX  // Bounding value needed for UMA histogram macro.
 };

@@ -68,6 +68,11 @@
 #include "chrome/installer/setup/channel_override_work_item.h"
 #endif
 
+#include "hopium_config/hopium_features.h"
+#if BUILDFLAG(TSEC_BRAND)
+#include "hopium/tslib_hopium/install_utils.h"
+#endif
+
 using base::ASCIIToWide;
 using base::win::RegKey;
 
@@ -842,6 +847,10 @@ bool AppendPostInstallTasks(const InstallParams& install_params,
   // update checks even if the policy is cleared.
   AddChannelSelectionWorkItems(installer_state, post_install_task_list);
 #endif  // BUILDFLAG(USE_GOOGLE_UPDATE_INTEGRATION)
+
+#if BUILDFLAG(TSEC_BRAND)
+  tsec::install_util::AddPostInstallTasks(installer_state, install_params, post_install_task_list);
+#endif
 
   return true;
 }

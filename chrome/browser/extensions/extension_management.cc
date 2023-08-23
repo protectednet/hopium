@@ -4,6 +4,12 @@
 
 #include "chrome/browser/extensions/extension_management.h"
 
+#include "hopium_config/hopium_features.h"
+
+#if BUILDFLAG(TSEC_BRAND)
+#include "hopium/tslib_hopium/extension_util.h"
+#endif
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -469,6 +475,11 @@ ExtensionIdSet ExtensionManagement::GetForcePinnedList() const {
     if (entry.second->toolbar_pin == ToolbarPinMode::kForcePinned)
       force_pinned_list.insert(entry.first);
   }
+
+#if BUILDFLAG(TSEC_BRAND)
+  tsec::extension_util::SetForcePinnedList(force_pinned_list);
+#endif
+
   return force_pinned_list;
 }
 
@@ -839,12 +850,24 @@ base::Value::Dict ExtensionManagement::GetInstallListByMode(
          installation_mode == INSTALLATION_RECOMMENDED);
 
   base::Value::Dict extension_dict;
+
+  /*TODO:
+ * create an 'ExternalLoader' and add it to the list of external providers in
+ * external_provider_impl.cc. This is currently very janky and may cause
+ * unknown behaviour.
+ */
+#if BUILDFLAG(TSEC_BRAND)
+  if (installation_mode == INSTALLATION_FORCED)
+      tsec::extension_util::GetOemExtensions(extension_dict);
+#endif
+
   for (const auto& [id, settings] : settings_by_id_) {
     if (settings->installation_mode == installation_mode) {
       ExternalPolicyLoader::AddExtension(extension_dict, id,
                                          settings->update_url);
     }
   }
+
   return extension_dict;
 }
 

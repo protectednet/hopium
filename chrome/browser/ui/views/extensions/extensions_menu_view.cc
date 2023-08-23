@@ -4,6 +4,11 @@
 
 #include "chrome/browser/ui/views/extensions/extensions_menu_view.h"
 
+#include "hopium_config/hopium_features.h"
+#if BUILDFLAG(TSEC_BRAND)
+#include "hopium/tslib_hopium/extension_util.h"
+#endif
+
 #include "base/containers/contains.h"
 #include "base/feature_list.h"
 #include "base/i18n/case_conversion.h"
@@ -328,9 +333,15 @@ void ExtensionsMenuView::InsertMenuItem(ExtensionMenuItemView* menu_item) {
 void ExtensionsMenuView::UpdateSectionVisibility() {
   auto update_section = [](Section* section) {
     bool should_be_visible = !section->menu_items->children().empty();
+#if BUILDFLAG(TSEC_BRAND)
+    if (should_be_visible)
+      tsec::extension_util::SetExtensionMenuItemsVisibility(section->menu_items->children());
+#endif
     if (section->container->GetVisible() != should_be_visible)
       section->container->SetVisible(should_be_visible);
   };
+
+
 
   update_section(&has_access_);
   update_section(&wants_access_);

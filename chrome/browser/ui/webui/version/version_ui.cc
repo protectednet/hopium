@@ -14,6 +14,7 @@
 #include "base/i18n/message_formatter.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/test/test_simple_task_runner.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
@@ -67,6 +68,12 @@
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
 #include "chromeos/startup/browser_params_proxy.h"
 #endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
+
+
+#include "hopium_config/hopium_features.h"
+#if BUILDFLAG(TSEC_BRAND)
+#include "hopium/tslib_hopium/hopium_version_numbers.h"
+#endif
 
 using content::WebUIDataSource;
 
@@ -224,6 +231,12 @@ void VersionUI::AddVersionDetailStrings(content::WebUIDataSource* html_source) {
                          std::string(version_info::GetVersionNumber()));
 
   html_source->AddString(version_ui::kVersionModifier, GetProductModifier());
+
+
+#if BUILDFLAG(TSEC_BRAND)
+  html_source->AddString("hopium_version", tsec::GetHopiumVersion().GetString());
+#endif
+
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
   auto* init_params = chromeos::BrowserParamsProxy::Get();

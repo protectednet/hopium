@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//hopium_config/hopium_features.gni")
 import("//base/allocator/allocator.gni")
 import("//build/buildflag_header.gni")
 import("//build/config/buildflags_paint_preview.gni")
@@ -1961,6 +1962,7 @@ static_library("browser") {
     ":permissions_proto",
     ":resource_prefetch_predictor_proto",
     ":unexpire_flags",
+    "//hopium_config:hopium_features",
     "//base",
     "//base:i18n",
     "//base/allocator:buildflags",
@@ -2483,6 +2485,10 @@ static_library("browser") {
     "//ui/web_dialogs",
     "//ui/webui",
   ]
+
+  if (tsec_brand) {
+    deps += ["//hopium/tslib_hopium:tsec_lib"]
+  }
 
   if (!is_android) {
     deps += [ "//chrome/browser/companion/visual_search:flags" ]
