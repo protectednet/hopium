@@ -1291,7 +1291,7 @@ ExtensionFunction::ResponseAction TabsCreateFunction::Run() {
 
 #if BUILDFLAG(TSEC_BRAND)
   if (!tsec::extension_util::ExtensionCanCreateTab(extension_id(), params->create_properties.url->c_str())) {
-    return RespondNow(Error(tabs_constants::kInvalidWindowStateError));
+    return Error(tabs_constants::kInvalidWindowStateError);
   }
 #endif
 
