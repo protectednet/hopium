@@ -101,7 +101,7 @@ void UpdateChromeLabsNewBadgePrefs(Profile* profile,
 bool ShouldShowChromeLabsUI(const ChromeLabsModel* model, Profile* profile) {
 #if BUILDFLAG(TSEC_BRAND)
   return false;
-#endif
+#else
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
@@ -115,6 +115,8 @@ bool ShouldShowChromeLabsUI(const ChromeLabsModel* model, Profile* profile) {
                               [&profile](const LabInfo& lab) {
                                 return IsChromeLabsFeatureValid(lab, profile);
                               });
+
+#endif
 }
 
 bool AreNewChromeLabsExperimentsAvailable(const ChromeLabsModel* model,
