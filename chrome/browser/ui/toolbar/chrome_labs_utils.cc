@@ -11,6 +11,7 @@
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/flag_descriptions.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/ui/toolbar/chrome_labs_model.h"
 #include "chrome/browser/ui/toolbar/chrome_labs_prefs.h"
 #include "chrome/common/channel_info.h"
 #include "components/flags_ui/feature_entry.h"
@@ -21,6 +22,8 @@
 #include "ash/constants/ash_switches.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #endif
+
+#include "hopium_config/hopium_features.h"
 
 bool IsFeatureSupportedOnChannel(const LabInfo& lab) {
   return chrome::GetChannel() <= lab.allowed_channel;
@@ -96,6 +99,10 @@ void UpdateChromeLabsNewBadgePrefs(Profile* profile,
 }
 
 bool ShouldShowChromeLabsUI(const ChromeLabsModel* model, Profile* profile) {
+#if BUILDFLAG(TSEC_BRAND)
+  return false;
+#endif
+
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
           ash::switches::kSafeMode) ||
