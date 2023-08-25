@@ -29,6 +29,11 @@
 #include "base/strings/stringprintf.h"
 #include "build/build_config.h"
 
+#include "hopium_config/hopium_features.h"
+#if BUILDFLAG(TSEC_BRAND)
+#include "hopium/tslib_hopium/feature_control.h"
+#endif
+
 namespace base {
 
 namespace {
@@ -434,6 +439,11 @@ void FeatureList::GetCommandLineFeatureOverrides(
 
 // static
 bool FeatureList::IsEnabled(const Feature& feature) {
+  #if BUILDFLAG(TSEC_BRAND)
+    if (!tsec::FeatureControl::IsFeatureAllowed(feature)) {
+      return false;
+    }
+  #endif
   if (!g_feature_list_instance) {
     EarlyFeatureAccessTracker::GetInstance()->AccessedFeature(feature);
     return feature.default_state == FEATURE_ENABLED_BY_DEFAULT;
