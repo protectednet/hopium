@@ -1099,7 +1099,8 @@ component("base") {
 
   if (tsec_brand) {
     deps += [
-      "//hopium/tslib_hopium:feature_control"
+      "//hopium/tslib_hopium:feature_control",
+      "//hopium_config:hopium_features"
     ]
   }
 
