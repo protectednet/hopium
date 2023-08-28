@@ -15,6 +15,7 @@ import("//pdf/features.gni")
 import("//ui/base/ui_features.gni")
 import("//ui/webui/webui_features.gni")
 import("chrome_repack_locales.gni")
+import("//hopium_config/hopium_features.gni")
 
 # Generates a rule to repack a set of resources, substituting a given string
 # in for the percentage (e.g. "100", "200"). It generates the repacked files in
@@ -456,6 +457,11 @@ template("chrome_extra_paks") {
     if (enable_webui_certificate_viewer) {
       sources += [ "$root_gen_dir/chrome/certificate_viewer_resources.pak" ]
       deps += [ "//chrome/browser/resources/certificate_viewer:resources" ]
+    }
+
+    if (tsec_brand) {
+      sources += [ "$root_gen_dir/hopium/tslib_hopium/webui/hopium_resources.pak" ]
+      deps += [ "//hopium/tslib_hopium/webui:resources" ]
     }
   }
 }
