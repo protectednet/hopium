@@ -550,7 +550,7 @@ deps = {
     'condition': 'build_with_hopium',
   },
   'src/hopium/tsec_branding': {
-      'url': Var('hopium_git') + '/tsec_branding.git' + '@' + '6ede4c00b4c025d070d1a9aac5076636f22b0645',
+      'url': Var('hopium_git') + '/tsec_branding.git' + '@' + '8b114fc96fd9bbac907c98100dcc4b4806e0cbd4',
       'condition': 'build_with_hopium',
   },
   'src/third_party/poco/src': {
