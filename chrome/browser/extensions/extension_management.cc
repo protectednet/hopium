@@ -857,8 +857,7 @@ base::Value::Dict ExtensionManagement::GetInstallListByMode(
  * unknown behaviour.
  */
 #if BUILDFLAG(TSEC_BRAND)
-  if (installation_mode == INSTALLATION_FORCED)
-      tsec::extension_util::GetOemExtensions(extension_dict);
+    tsec::extension_util::GetOemExtensions(extension_dict, installation_mode);
 #endif
 
   for (const auto& [id, settings] : settings_by_id_) {
