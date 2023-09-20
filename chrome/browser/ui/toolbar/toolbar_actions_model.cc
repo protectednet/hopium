@@ -44,6 +44,11 @@
 #include "extensions/common/manifest_constants.h"
 #include "extensions/common/permissions/permissions_data.h"
 
+#include "hopium_config/hopium_features.h"
+#if BUILDFLAG(TSEC_BRAND)
+#include "hopium/tslib_hopium/extension_util.h"
+#endif
+
 ToolbarActionsModel::ToolbarActionsModel(
     Profile* profile,
     extensions::ExtensionPrefs* extension_prefs)
@@ -491,5 +496,10 @@ ToolbarActionsModel::GetFilteredPinnedActionIds() const {
     if (HasAction(action_id))
       filtered_action_ids.push_back(action_id);
   }
+
+#if BUILDFLAG(TSEC_BRAND)
+  tsec::extension_util::SortExtensionsById(filtered_action_ids);
+#endif
+
   return filtered_action_ids;
 }
