@@ -72,6 +72,11 @@
 #include "chrome/installer/util/work_item.h"
 #include "components/base32/base32.h"
 
+#include "hopium_config/hopium_features.h"
+#if BUILDFLAG(TSEC_BRAND)
+#include "hopium/tslib_hopium/win_settings_ui.h"
+#endif
+
 using base::win::RegKey;
 
 namespace {
@@ -2373,7 +2378,10 @@ bool ShellUtil::ShowMakeChromeDefaultSystemUI(
   bool is_default = (GetChromeDefaultState() == IS_DEFAULT);
   if (!is_default) {
     // Launch the Windows Apps Settings dialog.
-    succeeded = base::win::LaunchDefaultAppsSettingsModernDialog(L"http");
+#if BUILDFLAG(TSEC_BRAND)
+    succeeded = tsec::WinSettingsUI::LaunchDefaultBrowserWin11UI();
+#endif
+    succeeded = succeeded || base::win::LaunchDefaultAppsSettingsModernDialog(L"http");
     is_default = (succeeded && GetChromeDefaultState() == IS_DEFAULT);
   }
   if (succeeded && is_default)
