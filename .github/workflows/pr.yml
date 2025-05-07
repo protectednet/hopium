@@ -7,7 +7,7 @@ on:
       - opened
       - reopened
       - synchronize
-      - ready_for_review # Note: ready_for_review is usually when a PR is marked as not draft.
+      - ready_for_review
 
 jobs:
   conditional_review:
@@ -16,7 +16,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 100
+          fetch-depth: 0
 
       - name: Define Upstream Repository and Branch
         id: upstream_config
@@ -52,8 +52,8 @@ jobs:
           fi
 
           echo "Fetching from upstream remote (target branch: $UPSTREAM_BRANCH_NAME)..."
-          git fetch upstream "$UPSTREAM_BRANCH_NAME" --no-tags --depth=100
-          UPSTREAM_BRANCH_HEAD_REF="refs/remotes/upstream/$UPSTREAM_BRANCH_NAME" # Use full ref name for robustness
+          git fetch upstream "$UPSTREAM_BRANCH_NAME" --no-tags --depth=0
+          UPSTREAM_BRANCH_HEAD_REF="refs/remotes/upstream/$UPSTREAM_BRANCH_NAME"
           echo "Successfully fetched $UPSTREAM_BRANCH_HEAD_REF"
 
           # Determine the merge base between the PR's base in your fork and the PR's head
