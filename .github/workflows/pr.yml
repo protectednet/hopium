@@ -154,18 +154,14 @@ jobs:
             }
             core.setOutput('require_review', requireReview.toString());
 
-      # The rest of your workflow (Determine Review Requirement and Add Labels, Enforce Review)
-      # can remain largely the same, as they depend on the 'require_review' output.
       - name: Determine Review Requirement and Add Labels
         id: review_decision_and_labeling
-        # ... (uses steps.pr_commit_check.outputs.require_review) ...
-        # (Your existing script for this step is likely fine)
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const requireReviewOutputFromCommitCheck = ${{ steps.pr_commit_check.outputs.require_review || 'false' }};
-            const prRequiresReview = requireReviewOutputFromCommitCheck === 'true';
+            const requireReviewOutputFromCommitCheck = ${{ steps.pr_commit_check.outputs.require_review || false }};
+            const prRequiresReview = requireReviewOutputFromCommitCheck === true;
 
             const prNumber = context.issue.number;
             const owner = context.repo.owner;
