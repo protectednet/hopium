@@ -157,12 +157,11 @@ steps:
         - '-c'
         - |
             set -e
-            ls -lh /workspace/hopium/src/out/
             ls -lh /workspace/hopium/src/out/Debug
   
 
   # 6. Store Build Artifacts
-#  - name: 'gcr.io/cloud-builders/gsutil'
-#    id: 'upload-artifact'
-#    waitFor: [ 'verify-binary' ]
-#    args: ['-m', 'cp', '-r', '/workspace/hopium/src/out/Debug/*', 'gs://tmp-totalbrowser-build-artifacts/$TAG_NAME']
+  - name: 'gcr.io/cloud-builders/gsutil'
+    id: 'upload-artifact'
+    waitFor: [ 'verify-binary' ]
+    args: ['-m', 'cp', '-r', '/workspace/hopium/src/out/Debug/*', 'gs://tmp-totalbrowser-build-artifacts/$TAG_NAME']
