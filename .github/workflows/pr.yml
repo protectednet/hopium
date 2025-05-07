@@ -27,21 +27,44 @@ jobs:
       - name: Check Commit Origin Against Upstream
         id: commit_origin_check
         run: |
+          # Ensure script exits on error by default; we will manage specific command failures.
+          set -e 
+          
           UPSTREAM_REPO_URL="${{ steps.upstream_config.outputs.upstream_repo_url }}"
           UPSTREAM_BRANCH_NAME="${{ steps.upstream_config.outputs.upstream_branch_name }}"
           
           PR_BASE_COMMIT_SHA="${{ github.event.pull_request.base.sha }}"
           PR_HEAD_SHA="${{ github.event.pull_request.head.sha }}"
           
-          # Define the actual fetch depth being used for logging purposes.
-          # If you make fetch-depth a workflow input later, you can use ${{ inputs.checkout_fetch_depth }}
-          ACTUAL_FETCH_DEPTH="1000" 
+          # Set actual fetch depth for logging.
+          # If you make fetch-depth a workflow input like 'inputs.checkout_fetch_depth', use that here.
+          # Otherwise, ensure this matches the value in your 'actions/checkout' step.
+          ACTUAL_FETCH_DEPTH="1000" # As per your last log for this PR
           
           echo "--- Git Diagnostics ---"
           echo "Current fetch-depth for actions/checkout is $ACTUAL_FETCH_DEPTH."
-          # These fetches ensure a bit of history around the specific SHAs.
-          git fetch origin --no-tags --depth=5 "$PR_BASE_COMMIT_SHA" || echo "Warning: Deepening fetch for PR_BASE_COMMIT_SHA ($PR_BASE_COMMIT_SHA) failed or had no effect."
-          git fetch origin --no-tags --depth=5 "$PR_HEAD_SHA" || echo "Warning: Deepening fetch for PR_HEAD_SHA ($PR_HEAD_SHA) failed or had no effect."
+          echo "PATH is: $PATH"
+          echo "Checking for timeout command..."
+          if ! which timeout > /dev/null; then
+            echo "Error: 'timeout' command not found in PATH."
+            # As a fallback, try a common path if 'which' fails or PATH is minimal
+            if [ -x "/usr/bin/timeout" ]; then
+              echo "Found timeout at /usr/bin/timeout."
+              TIMEOUT_CMD="/usr/bin/timeout"
+            else
+              echo "FATAL: 'timeout' command is not available. Cannot proceed safely with merge-base."
+              exit 1
+            fi
+          else
+            TIMEOUT_CMD="timeout" # Use 'timeout' if found in PATH
+            echo "'timeout' command found in PATH."
+          fi
+          $TIMEOUT_CMD --version || (echo "Error: '$TIMEOUT_CMD --version' failed." && exit 1)
+          echo "Timeout command seems available and runnable."
+          
+          echo "Attempting to deepen fetch for specific SHAs (safeguard)..."
+          git fetch origin --no-tags --depth=5 "$PR_BASE_COMMIT_SHA" || echo "Warning: Deepening fetch for PR_BASE_COMMIT_SHA ($PR_BASE_COMMIT_SHA) had no effect or failed (might be ok if SHA is already well-fetched)."
+          git fetch origin --no-tags --depth=5 "$PR_HEAD_SHA" || echo "Warning: Deepening fetch for PR_HEAD_SHA ($PR_HEAD_SHA) had no effect or failed."
           echo "-------------------------"
           
           echo "Upstream Repository URL: $UPSTREAM_REPO_URL"
@@ -50,17 +73,17 @@ jobs:
           echo "PR Head SHA (from event.pull_request.head.sha): $PR_HEAD_SHA"
           
           echo "Verifying PR_BASE_COMMIT_SHA ($PR_BASE_COMMIT_SHA) is a valid commit..."
-          git rev-parse --verify "$PR_BASE_COMMIT_SHA^{commit}" || \
-            (echo "Error: PR_BASE_COMMIT_SHA '$PR_BASE_COMMIT_SHA' could not be resolved. Increase 'fetch-depth' in 'actions/checkout'." && exit 1)
+          git rev-parse --verify "$PR_BASE_COMMIT_SHA^{commit}" || (echo "Error: PR_BASE_COMMIT_SHA '$PR_BASE_COMMIT_SHA' could not be resolved." && exit 1)
           
           echo "Verifying PR_HEAD_SHA ($PR_HEAD_SHA) is a valid commit..."
-          git rev-parse --verify "$PR_HEAD_SHA^{commit}" || \
-            (echo "Error: PR_HEAD_SHA '$PR_HEAD_SHA' could not be resolved." && exit 1)
+          git rev-parse --verify "$PR_HEAD_SHA^{commit}" || (echo "Error: PR_HEAD_SHA '$PR_HEAD_SHA' could not be resolved." && exit 1)
           
           # Add upstream remote
           if ! git remote | grep -q '^upstream$'; then
+            echo "Adding remote 'upstream' for $UPSTREAM_REPO_URL"
             git remote add upstream "$UPSTREAM_REPO_URL"
           else
+            echo "Remote 'upstream' already exists. Setting URL."
             git remote set-url upstream "$UPSTREAM_REPO_URL"
           fi
           echo "Fetching from upstream remote (target branch: $UPSTREAM_BRANCH_NAME)..."
@@ -68,42 +91,50 @@ jobs:
           UPSTREAM_BRANCH_HEAD_REF="refs/remotes/upstream/$UPSTREAM_BRANCH_NAME"
           echo "Successfully fetched $UPSTREAM_BRANCH_HEAD_REF"
           
-          # Determine the merge base using the specific base commit SHA
-          echo "Determining merge base between PR_BASE_COMMIT_SHA ($PR_BASE_COMMIT_SHA) and PR_HEAD_SHA ($PR_HEAD_SHA)... (Using a 5-minute timeout for this command)"
+          echo "Attempting to run: $TIMEOUT_CMD 300s git merge-base $PR_BASE_COMMIT_SHA $PR_HEAD_SHA"
+          MERGE_BASE_OUTPUT=""
+          MERGE_BASE_STATUS=0 # Default to success
           
-          # Capture output and exit status of git merge-base, with a timeout
-          MERGE_BASE_OUTPUT=$(timeout 300s git merge-base "$PR_BASE_COMMIT_SHA" "$PR_HEAD_SHA" 2>&1)
-          MERGE_BASE_STATUS=$? # $? will be 124 if timeout killed it.
+          # Execute the command and explicitly manage its potential failure
+          if MERGE_BASE_OUTPUT=$($TIMEOUT_CMD 300s git merge-base "$PR_BASE_COMMIT_SHA" "$PR_HEAD_SHA" 2>&1); then
+            MERGE_BASE_STATUS=0
+            echo "git merge-base command itself reported success (exit status 0)."
+          else
+            MERGE_BASE_STATUS=$? # Capture actual exit status from timeout or git merge-base
+            echo "git merge-base command (or timeout wrapper) reported failure. Captured status: $MERGE_BASE_STATUS."
+          fi
           
-          if [ $MERGE_BASE_STATUS -eq 124 ]; then # Check for timeout
-            echo "Error: 'git merge-base' command timed out after 5 minutes."
+          echo "Completed git merge-base attempt. Raw Status: $MERGE_BASE_STATUS. Raw Output: [$MERGE_BASE_OUTPUT]"
+          
+          # Now check the status
+          if [ $MERGE_BASE_STATUS -eq 124 ]; then 
+            echo "Error: 'git merge-base' command TIMED OUT after 5 minutes (status 124 from timeout command)."
             echo "This means finding the common ancestor is taking an exceptionally long time, likely due to very deep or complex history not fully covered by the current fetch-depth ($ACTUAL_FETCH_DEPTH)."
             echo "RECOMMENDATION: The most reliable solution is 'fetch-depth: 0' in 'actions/checkout' for full history, or a significantly larger specific depth if '0' is too slow."
             echo "For safety, this PR will be marked as requiring review."
             echo "require_review=true" >> $GITHUB_OUTPUT
-            exit 0 # CRITICAL: Exit 0 to allow workflow to proceed with labeling
-          elif [ $MERGE_BASE_STATUS -ne 0 ]; then # Check for other non-zero exit statuses
-            echo "Error: 'git merge-base' failed with status $MERGE_BASE_STATUS (not a timeout)."
-            echo "Command output: $MERGE_BASE_OUTPUT" # This will show any error message from git merge-base itself
-            echo "This critical failure means a common ancestor could not be found between the PR's base commit ($PR_BASE_COMMIT_SHA) and its head commit ($PR_HEAD_SHA)."
-            echo "The MOST LIKELY CAUSE is that the history fetched by 'actions/checkout' (current fetch-depth: $ACTUAL_FETCH_DEPTH) is too shallow."
+            exit 0 
+          elif [ $MERGE_BASE_STATUS -ne 0 ]; then 
+            echo "Error: 'git merge-base' command FAILED with status $MERGE_BASE_STATUS (not a timeout)."
+            echo "Command output (if any) from git merge-base: $MERGE_BASE_OUTPUT"
+            echo "This critical failure means a common ancestor could not be found between the PR's base commit ($PR_BASE_COMMIT_SHA) and its head commit ($PR_HEAD_SHA), or another git error occurred."
+            echo "The MOST LIKELY CAUSE (if output is empty or indicates no common ancestor) is that the history fetched by 'actions/checkout' (current fetch-depth: $ACTUAL_FETCH_DEPTH) is too shallow."
             echo "RECOMMENDATION: Significantly increase 'fetch-depth' in 'actions/checkout'. Try a much larger value, or use '0' for full history."
             echo "For safety, this PR will be marked as requiring review."
             echo "require_review=true" >> $GITHUB_OUTPUT
-            exit 0 # CRITICAL: Exit 0 to allow workflow to proceed with labeling
+            exit 0 
           fi
           
-          # If merge-base succeeded (status 0), extract the SHA.
+          echo "git merge-base command seems to have succeeded with status 0."
+          # If successful, MERGE_BASE_OUTPUT contains the SHA.
           MERGE_BASE=$(echo "$MERGE_BASE_OUTPUT" | awk '{print $1}') 
           
           if [ -z "$MERGE_BASE" ]; then
-            # This case should ideally not be reached if the status checks above are robust,
-            # but serves as a final validation if git merge-base succeeded but returned empty output.
-            echo "Error: Merge base determined to be empty even though 'git merge-base' command reported success (status 0)."
+            echo "Error: Merge base is empty even though git merge-base reported success (status 0)."
             echo "This is unexpected. Output from merge-base was: '$MERGE_BASE_OUTPUT'"
             echo "For safety, requiring review."
             echo "require_review=true" >> $GITHUB_OUTPUT
-            exit 0 # Exit 0 to allow workflow to proceed
+            exit 0
           fi
           
           echo "Merge Base for PR commits: $MERGE_BASE"
