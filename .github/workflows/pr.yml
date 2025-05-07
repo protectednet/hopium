@@ -65,7 +65,6 @@ jobs:
             const repo = context.repo.repo;
             // Retrieve the upstream branch ref from the environment variable set in the previous step
             const upstreamBranchHeadRef = process.env.UPSTREAM_BRANCH_FULL_REF;
-            const { exec } = require('@actions/exec'); // For running git commands
 
             if (!upstreamBranchHeadRef) {
               core.setFailed("Error: UPSTREAM_BRANCH_FULL_REF environment variable not set. Cannot proceed.");
