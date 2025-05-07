@@ -24,75 +24,132 @@ jobs:
       - name: Check Commit Origin Against Upstream
         id: commit_origin_check
         run: |
-          UPSTREAM_REPO_URL="${{ steps.upstream_config.outputs.upstream_repo_url }}"
-          UPSTREAM_BRANCH_NAME="${{ steps.upstream_config.outputs.upstream_branch_name }}"
-          PR_BASE_REF="origin/${{ github.event.pull_request.base.ref }}"
-          PR_HEAD_SHA="${{ github.event.pull_request.head.sha }}"
-
+          # --- Initial Git State & Configuration ---
+          echo "Current directory: $(pwd)"
+          echo "GitHub Repository: ${{ github.repository }}"
+          echo "GitHub Workflow: ${{ github.workflow }}"
+          echo "GitHub Run ID: ${{ github.run_id }}"
+          echo "GitHub Event Name: ${{ github.event_name }}"
+          echo "PR Base Ref from event: ${{ github.event.pull_request.base.ref }}"
+          echo "PR Head Ref from event: ${{ github.event.pull_request.head.ref }}"
+          echo "PR Head SHA from event: ${{ github.event.pull_request.head.sha }}"
+            echo "-----------------------------------------"
+            echo "--- Initial Git Setup by Checkout Action ---"
+          echo "Current branch (HEAD): $(git rev-parse --abbrev-ref HEAD)"
+          echo "Current commit (HEAD): $(git rev-parse HEAD)"
+            echo "Remotes:"
+            git remote -v
+            echo "Local branches:"
+            git branch
+            echo "All refs (local and remote-tracking):"
+            git show-ref
+            echo "-----------------------------------------"
+            
+            UPSTREAM_REPO_URL="${{ steps.upstream_config.outputs.upstream_repo_url }}"
+            UPSTREAM_BRANCH_NAME="${{ steps.upstream_config.outputs.upstream_branch_name }}"
+            # Define PR base branch name and the full ref for it
+            PR_BASE_BRANCH_NAME="${{ github.event.pull_request.base.ref }}"
+            PR_ACTUAL_BASE_REF="refs/remotes/origin/$PR_BASE_BRANCH_NAME" # This is the ref we need to ensure exists
+            PR_HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          
           echo "Upstream Repository URL: $UPSTREAM_REPO_URL"
-          echo "Target Upstream Branch for Comparison: $UPSTREAM_BRANCH_NAME" # Clarified purpose
-          echo "PR Base Ref: $PR_BASE_REF"
+          echo "Target Upstream Branch for Comparison: $UPSTREAM_BRANCH_NAME"
+          echo "PR Base Branch Name (in fork): $PR_BASE_BRANCH_NAME"
+          echo "PR Actual Base Ref to use: $PR_ACTUAL_BASE_REF"
           echo "PR Head SHA: $PR_HEAD_SHA"
-
-          # Add upstream remote if it doesn't exist
-          if ! git remote | grep -q '^upstream$'; then
+          
+          # --- Details for 'origin' remote before fetching PR base ---
+            echo "Showing details for 'origin' remote:"
+            git remote show origin
+            echo "Checking if '$PR_ACTUAL_BASE_REF' exists before explicit fetch:"
+          git rev-parse --verify "$PR_ACTUAL_BASE_REF" || echo "Info: Ref '$PR_ACTUAL_BASE_REF' does NOT exist or is not valid yet."
+            echo "-------------------------------------------------------"
+          
+          # CRUCIAL STEP: Explicitly fetch the PR's base branch from origin to ensure its remote-tracking ref is available
+          echo "Fetching PR base branch '$PR_BASE_BRANCH_NAME' from origin (refspec: $PR_BASE_BRANCH_NAME:$PR_ACTUAL_BASE_REF)..."
+            git fetch origin "$PR_BASE_BRANCH_NAME:$PR_ACTUAL_BASE_REF"
+            echo "Fetch of PR base branch from origin complete."
+            
+            # --- Git State After Explicitly Fetching PR Base Branch from origin ---
+            echo "Remote-tracking branches (git branch -r) after origin fetch:"
+            git branch -r
+            echo "All refs (git show-ref) again after origin fetch:"
+            git show-ref
+            echo "Verifying ref '$PR_ACTUAL_BASE_REF' (SHA) after origin fetch:"
+          git rev-parse "$PR_ACTUAL_BASE_REF" || echo "Error: rev-parse failed for '$PR_ACTUAL_BASE_REF' even after explicit origin fetch!"
+            echo "Verifying ref type '$PR_ACTUAL_BASE_REF' (type) after origin fetch:"
+          git cat-file -t "$PR_ACTUAL_BASE_REF" || echo "Error: cat-file -t failed for '$PR_ACTUAL_BASE_REF' even after explicit origin fetch!"
+            echo "---------------------------------------------"
+            
+            # Add upstream remote if it doesn't exist
+            if ! git remote | grep -q '^upstream$'; then
             echo "Adding remote 'upstream' for $UPSTREAM_REPO_URL"
             git remote add upstream "$UPSTREAM_REPO_URL"
-          else
+            else
             echo "Remote 'upstream' already exists. Setting URL."
             git remote set-url upstream "$UPSTREAM_REPO_URL"
-          fi
-
+            fi
+          
           echo "Fetching from upstream remote (target branch: $UPSTREAM_BRANCH_NAME)..."
           # Fetch only the specific target branch from upstream
-          git fetch upstream "$UPSTREAM_BRANCH_NAME" --no-tags --depth=1000 # Adjust depth as needed
-          UPSTREAM_BRANCH_HEAD_REF="upstream/$UPSTREAM_BRANCH_NAME" # Reference to the fetched upstream branch head
-          echo "Successfully fetched $UPSTREAM_BRANCH_HEAD_REF"
-
-          # Determine the merge base between the PR's base in your fork and the PR's head
-          # This defines the starting point for commits introduced by this PR in your fork.
-          MERGE_BASE=$(git merge-base "$PR_BASE_REF" "$PR_HEAD_SHA")
-          if [ -z "$MERGE_BASE" ]; then
-            echo "Error: Could not determine merge base between $PR_BASE_REF and $PR_HEAD_SHA."
+            git fetch upstream "$UPSTREAM_BRANCH_NAME:refs/remotes/upstream/$UPSTREAM_BRANCH_NAME" --no-tags --depth=5000 # Adjust depth as needed
+            UPSTREAM_BRANCH_HEAD_REF="refs/remotes/upstream/$UPSTREAM_BRANCH_NAME" # Reference to the fetched upstream branch head
+            echo "Successfully fetched $UPSTREAM_BRANCH_HEAD_REF"
+          git rev-parse --verify "$UPSTREAM_BRANCH_HEAD_REF" || echo "Error: rev-parse failed for '$UPSTREAM_BRANCH_HEAD_REF' after upstream fetch!"
+          
+          
+          # --- Pre-Merge-Base Check ---
+            echo "Refs being passed to merge-base:"
+          echo "  Ref 1 (PR Base): $PR_ACTUAL_BASE_REF"
+          echo "  Ref 2 (PR Head): $PR_HEAD_SHA"
+            echo "Checking validity of Ref 1 ($PR_ACTUAL_BASE_REF):"
+          git rev-parse --verify "$PR_ACTUAL_BASE_REF" || echo "CRITICAL: '$PR_ACTUAL_BASE_REF' is not a valid object name just before merge-base!"
+            echo "Checking validity of Ref 2 ($PR_HEAD_SHA):"
+          git rev-parse --verify "$PR_HEAD_SHA" || echo "CRITICAL: '$PR_HEAD_SHA' is not a valid object name just before merge-base!"
+            echo "---------------------------"
+            
+            # Determine the merge base between the PR's base in your fork and the PR's head
+            MERGE_BASE=$(git merge-base "$PR_ACTUAL_BASE_REF" "$PR_HEAD_SHA")
+            if [ -z "$MERGE_BASE" ]; then
+          echo "Error: Could not determine merge base between '$PR_ACTUAL_BASE_REF' and '$PR_HEAD_SHA'."
             echo "This could indicate unrelated histories or issues fetching. For safety, requiring review."
-            echo "::set-output name=require_review::true"
+            core.setOutput('is_purely_upstream', 'false') # Corrected output name
             exit 0
-          fi
+            fi
           echo "Merge Base for PR commits (relative to fork's base): $MERGE_BASE"
-
+          
           # Get the list of commit SHAs introduced by this PR in your fork
-          PR_COMMIT_SHAS=$(git log "$MERGE_BASE".."$PR_HEAD_SHA" --pretty=format:"%H" --no-merges)
-
-          if [ -z "$PR_COMMIT_SHAS" ]; then
+            PR_COMMIT_SHAS=$(git log "$MERGE_BASE".."$PR_HEAD_SHA" --pretty=format:"%H" --no-merges)
+            
+            if [ -z "$PR_COMMIT_SHAS" ]; then
             echo "No new authored commits found in PR range."
-            echo "PR is an empty sync or just a merge from upstream chromium repo. No review required."
-            echo "::set-output name=require_review::false"
+            echo "PR is an empty sync or just a merge. No review required by this check."
+            core.setOutput('is_purely_upstream', 'true') # Corrected output name
             exit 0
-          fi
-          echo "Commit SHAs in PR to verify against upstream ($UPSTREAM_BRANCH_HEAD_REF):"
-          echo "$PR_COMMIT_SHAS"
-
-          ALL_COMMITS_ARE_UPSTREAM=true
-          for commit_sha in $PR_COMMIT_SHAS; do
+            fi
+            echo "Commit SHAs in PR to verify against upstream ($UPSTREAM_BRANCH_HEAD_REF):"
+            echo "$PR_COMMIT_SHAS"
+            
+            ALL_COMMITS_ARE_UPSTREAM=true
+            for commit_sha in $PR_COMMIT_SHAS; do
             echo "Verifying commit $commit_sha against $UPSTREAM_BRANCH_HEAD_REF..."
             # Check if the commit_sha is an ancestor of the fetched upstream branch's head
             if git merge-base --is-ancestor "$commit_sha" "$UPSTREAM_BRANCH_HEAD_REF"; then
-              echo "Commit $commit_sha FOUND in $UPSTREAM_BRANCH_HEAD_REF."
+            echo "Commit $commit_sha FOUND in $UPSTREAM_BRANCH_HEAD_REF."
             else
-              echo "Commit $commit_sha NOT FOUND in $UPSTREAM_BRANCH_HEAD_REF. This PR contains local/modified changes."
-              ALL_COMMITS_ARE_UPSTREAM=false
-              break # No need to check further, one local commit is enough
+            echo "Commit $commit_sha NOT FOUND in $UPSTREAM_BRANCH_HEAD_REF. This PR contains local/modified changes."
+            ALL_COMMITS_ARE_UPSTREAM=false
+            break # No need to check further, one local commit is enough
             fi
-          done
-
-          if [[ "$ALL_COMMITS_ARE_UPSTREAM" == "true" ]]; then
+            done
+            
+            if [[ "$ALL_COMMITS_ARE_UPSTREAM" == "true" ]]; then
             echo "All commits in this PR originate from the upstream branch ($UPSTREAM_BRANCH_NAME)."
-            echo "::set-output name=require_review::false"
-          else
+            core.setOutput('is_purely_upstream', 'true') # Corrected output name
+            else
             echo "This PR contains commits not found on the upstream branch ($UPSTREAM_BRANCH_NAME). Internal review required."
-            echo "::set-output name=require_review::true"
-          fi
-        shell: bash
+            core.setOutput('is_purely_upstream', 'false') # Corrected output name
+            fi
 
       - name: Determine Review Requirement and Add Labels
         id: review_decision_and_labeling
