@@ -16,7 +16,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1000000
+          fetch-depth: 1000
 
       - name: Define Upstream Repository and Branch
         id: upstream_config
@@ -35,7 +35,7 @@ jobs:
           
           # Define the actual fetch depth being used for logging purposes.
           # If you make fetch-depth a workflow input later, you can use ${{ inputs.checkout_fetch_depth }}
-          ACTUAL_FETCH_DEPTH="1000000" 
+          ACTUAL_FETCH_DEPTH="1000" 
           
           echo "--- Git Diagnostics ---"
           echo "Current fetch-depth for actions/checkout is $ACTUAL_FETCH_DEPTH."
