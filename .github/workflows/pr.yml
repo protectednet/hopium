@@ -16,7 +16,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 500
 
       - name: Define Upstream Repository and Branch
         id: upstream_config
@@ -29,20 +29,38 @@ jobs:
         run: |
           UPSTREAM_REPO_URL="${{ steps.upstream_config.outputs.upstream_repo_url }}"
           UPSTREAM_BRANCH_NAME="${{ steps.upstream_config.outputs.upstream_branch_name }}"
-          PR_BASE_REF="origin/${{ github.event.pull_request.base.ref }}"
+          PR_BASE_COMMIT_SHA="${{ github.event.pull_request.base.sha }}"
           PR_HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+
+          echo "--- Git Diagnostics ---"
+          echo "Current fetch-depth for actions/checkout is 100 (as per your last message)."
+          echo "Attempting to ensure specific PR base/head SHAs are locally available and potentially deepen their history slightly."
+          
+          # These fetches might be redundant if actions/checkout with fetch-depth:100 was sufficient for these specific SHAs,
+          # but they act as a safeguard to ensure these critical SHAs are resolvable.
+          # We fetch with a small depth to get some context around them if they are already known.
+          git fetch origin --no-tags --depth=5 "$PR_BASE_COMMIT_SHA" || echo "Warning: Deepening fetch for PR_BASE_COMMIT_SHA ($PR_BASE_COMMIT_SHA) failed. This might happen if the SHA is already well-covered by the initial fetch-depth=100, or if the SHA is not found (which would be an issue)."
+          git fetch origin --no-tags --depth=5 "$PR_HEAD_SHA" || echo "Warning: Deepening fetch for PR_HEAD_SHA ($PR_HEAD_SHA) failed."
+          echo "-------------------------"
 
           echo "Upstream Repository URL: $UPSTREAM_REPO_URL"
           echo "Target Upstream Branch for Comparison: $UPSTREAM_BRANCH_NAME"
-          echo "PR Base Ref (in fork): $PR_BASE_REF"
-          echo "PR Head SHA: $PR_HEAD_SHA"
+          echo "PR Base Commit SHA (from event.pull_request.base.sha): $PR_BASE_COMMIT_SHA"
+          echo "PR Head SHA (from event.pull_request.head.sha): $PR_HEAD_SHA"
 
-          echo "Verifying PR_BASE_REF ($PR_BASE_REF) is a valid commit..."
-          git rev-parse --verify "$PR_BASE_REF^{commit}" || (echo "Error: $PR_BASE_REF is not a valid commit object name. This usually means 'actions/checkout' did not fetch enough history for the base branch." && exit 1)
+          echo "Verifying PR_BASE_COMMIT_SHA ($PR_BASE_COMMIT_SHA) is a valid commit..."
+          # This SHA comes directly from GitHub's event payload.
+          # If 'actions/checkout' (with the current fetch-depth: 100) managed to retrieve this commit and its context, this should pass.
+          git rev-parse --verify "$PR_BASE_COMMIT_SHA^{commit}" || \
+            (echo "Error: PR_BASE_COMMIT_SHA '$PR_BASE_COMMIT_SHA' (from event.pull_request.base.sha) could not be resolved to a commit.
+            This means the commit specified as the PR's base by GitHub is NOT found or NOT resolvable in the local repository checkout with the current fetch-depth (100).
+            You likely need to INCREASE 'fetch-depth' in the 'actions/checkout' step. Try a larger value (e.g., 200, 500), or use '0' for full history (which is most reliable but potentially slower)." && exit 1)
+          
           echo "Verifying PR_HEAD_SHA ($PR_HEAD_SHA) is a valid commit..."
-          git rev-parse --verify "$PR_HEAD_SHA^{commit}" || (echo "Error: $PR_HEAD_SHA is not a valid commit object name." && exit 1)
+          git rev-parse --verify "$PR_HEAD_SHA^{commit}" || \
+            (echo "Error: PR_HEAD_SHA '$PR_HEAD_SHA' could not be resolved to a commit." && exit 1)
 
-          # Add upstream remote if it doesn't exist
+          # Add upstream remote
           if ! git remote | grep -q '^upstream$'; then
             echo "Adding remote 'upstream' for $UPSTREAM_REPO_URL"
             git remote add upstream "$UPSTREAM_REPO_URL"
@@ -52,22 +70,24 @@ jobs:
           fi
 
           echo "Fetching from upstream remote (target branch: $UPSTREAM_BRANCH_NAME)..."
-          git fetch upstream "$UPSTREAM_BRANCH_NAME" --no-tags --depth=0
+          # Fetch depth for the *actual* upstream (Chromium) can remain as is.
+          git fetch upstream "$UPSTREAM_BRANCH_NAME" --no-tags --depth=1000 
           UPSTREAM_BRANCH_HEAD_REF="refs/remotes/upstream/$UPSTREAM_BRANCH_NAME"
           echo "Successfully fetched $UPSTREAM_BRANCH_HEAD_REF"
 
-          # Determine the merge base between the PR's base in your fork and the PR's head
-          MERGE_BASE=$(git merge-base "$PR_BASE_REF" "$PR_HEAD_SHA")
+          # Determine the merge base using the specific base commit SHA
+          echo "Determining merge base between PR_BASE_COMMIT_SHA ($PR_BASE_COMMIT_SHA) and PR_HEAD_SHA ($PR_HEAD_SHA)..."
+          MERGE_BASE=$(git merge-base "$PR_BASE_COMMIT_SHA" "$PR_HEAD_SHA")
           if [ -z "$MERGE_BASE" ]; then
-            echo "Error: Could not determine merge base between $PR_BASE_REF and $PR_HEAD_SHA."
-            echo "This could indicate unrelated histories or issues fetching. For safety, requiring review."
+            echo "Error: Could not determine merge base between PR_BASE_COMMIT_SHA ($PR_BASE_COMMIT_SHA) and PR_HEAD_SHA ($PR_HEAD_SHA)."
+            echo "This could indicate unrelated histories OR that the fetched history (current depth: 100 for checkout) is insufficient to connect these two commits."
+            echo "Consider increasing 'fetch-depth' in 'actions/checkout'. For safety, requiring review."
             echo "require_review=true" >> $GITHUB_OUTPUT
-            exit 0
+            exit 0 # Exiting 0 to allow the workflow to proceed with 'require_review=true'
           fi
-          echo "Merge Base for PR commits (relative to fork's base $PR_BASE_REF): $MERGE_BASE"
-
-          # Get the list of commit SHAs introduced by this PR in your fork
-          # These are commits from MERGE_BASE (exclusive) to PR_HEAD_SHA (inclusive)
+          echo "Merge Base for PR commits (between $PR_BASE_COMMIT_SHA and $PR_HEAD_SHA): $MERGE_BASE"
+          
+          # Get the list of commit SHAs introduced by this PR (commits from MERGE_BASE (exclusive) to PR_HEAD_SHA (inclusive))
           PR_COMMIT_SHAS=$(git log "$MERGE_BASE".."$PR_HEAD_SHA" --pretty=format:"%H" --no-merges)
 
           if [ -z "$PR_COMMIT_SHAS" ]; then
@@ -87,7 +107,7 @@ jobs:
             else
               echo "Commit $commit_sha NOT FOUND in $UPSTREAM_BRANCH_HEAD_REF. This PR contains local/modified changes."
               ALL_COMMITS_ARE_UPSTREAM=false
-              break
+              break 
             fi
           done
 
@@ -98,7 +118,6 @@ jobs:
             echo "This PR contains commits not found on the upstream branch ($UPSTREAM_BRANCH_NAME). Internal review required."
             echo "require_review=true" >> $GITHUB_OUTPUT
           fi
-        shell: bash
 
       - name: Determine Review Requirement and Add Labels
         id: review_decision_and_labeling
