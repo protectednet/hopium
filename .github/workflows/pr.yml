@@ -16,7 +16,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 10000
+          fetch-depth: 1000000
 
       - name: Define Upstream Repository and Branch
         id: upstream_config
@@ -32,19 +32,23 @@ jobs:
           
           PR_BASE_COMMIT_SHA="${{ github.event.pull_request.base.sha }}"
           PR_HEAD_SHA="${{ github.event.pull_request.head.sha }}"
-
+          
+          # Define the actual fetch depth being used for logging purposes.
+          # If you make fetch-depth a workflow input later, you can use ${{ inputs.checkout_fetch_depth }}
+          ACTUAL_FETCH_DEPTH="1000000" 
+          
           echo "--- Git Diagnostics ---"
-          echo "Current fetch-depth for actions/checkout is 10000."
+          echo "Current fetch-depth for actions/checkout is $ACTUAL_FETCH_DEPTH."
           # These fetches ensure a bit of history around the specific SHAs.
           git fetch origin --no-tags --depth=5 "$PR_BASE_COMMIT_SHA" || echo "Warning: Deepening fetch for PR_BASE_COMMIT_SHA ($PR_BASE_COMMIT_SHA) failed or had no effect."
           git fetch origin --no-tags --depth=5 "$PR_HEAD_SHA" || echo "Warning: Deepening fetch for PR_HEAD_SHA ($PR_HEAD_SHA) failed or had no effect."
           echo "-------------------------"
-
+          
           echo "Upstream Repository URL: $UPSTREAM_REPO_URL"
           echo "Target Upstream Branch for Comparison: $UPSTREAM_BRANCH_NAME"
           echo "PR Base Commit SHA (from event.pull_request.base.sha): $PR_BASE_COMMIT_SHA"
           echo "PR Head SHA (from event.pull_request.head.sha): $PR_HEAD_SHA"
-
+          
           echo "Verifying PR_BASE_COMMIT_SHA ($PR_BASE_COMMIT_SHA) is a valid commit..."
           git rev-parse --verify "$PR_BASE_COMMIT_SHA^{commit}" || \
             (echo "Error: PR_BASE_COMMIT_SHA '$PR_BASE_COMMIT_SHA' could not be resolved. Increase 'fetch-depth' in 'actions/checkout'." && exit 1)
@@ -52,7 +56,7 @@ jobs:
           echo "Verifying PR_HEAD_SHA ($PR_HEAD_SHA) is a valid commit..."
           git rev-parse --verify "$PR_HEAD_SHA^{commit}" || \
             (echo "Error: PR_HEAD_SHA '$PR_HEAD_SHA' could not be resolved." && exit 1)
-
+          
           # Add upstream remote
           if ! git remote | grep -q '^upstream$'; then
             git remote add upstream "$UPSTREAM_REPO_URL"
@@ -63,42 +67,49 @@ jobs:
           git fetch upstream "$UPSTREAM_BRANCH_NAME" --no-tags --depth=1000 
           UPSTREAM_BRANCH_HEAD_REF="refs/remotes/upstream/$UPSTREAM_BRANCH_NAME"
           echo "Successfully fetched $UPSTREAM_BRANCH_HEAD_REF"
-
-          # Determine the merge base using the specific base commit SHA
-          echo "Determining merge base between PR_BASE_COMMIT_SHA ($PR_BASE_COMMIT_SHA) and PR_HEAD_SHA ($PR_HEAD_SHA)..."
           
-          # Capture output and exit status of git merge-base
-          MERGE_BASE_OUTPUT=$(git merge-base "$PR_BASE_COMMIT_SHA" "$PR_HEAD_SHA" 2>&1)
-          MERGE_BASE_STATUS=$?
-
-          if [ $MERGE_BASE_STATUS -ne 0 ]; then
-            echo "Error: 'git merge-base' failed with status $MERGE_BASE_STATUS."
-            echo "Command output: $MERGE_BASE_OUTPUT"
-            echo "This critical failure means a common ancestor could not be found between the PR's base commit ($PR_BASE_COMMIT_SHA) and its head commit ($PR_HEAD_SHA)."
-            echo "The MOST LIKELY CAUSE is that the history fetched by 'actions/checkout' (current fetch-depth: 100) is too shallow to connect these two commits."
-            echo "RECOMMENDATION: Significantly increase 'fetch-depth' in the 'actions/checkout' step. Try values like 200, 500, or ideally 0 for full history (though '0' may be slow for Chromium)."
+          # Determine the merge base using the specific base commit SHA
+          echo "Determining merge base between PR_BASE_COMMIT_SHA ($PR_BASE_COMMIT_SHA) and PR_HEAD_SHA ($PR_HEAD_SHA)... (Using a 5-minute timeout for this command)"
+          
+          # Capture output and exit status of git merge-base, with a timeout
+          MERGE_BASE_OUTPUT=$(timeout 300s git merge-base "$PR_BASE_COMMIT_SHA" "$PR_HEAD_SHA" 2>&1)
+          MERGE_BASE_STATUS=$? # $? will be 124 if timeout killed it.
+          
+          if [ $MERGE_BASE_STATUS -eq 124 ]; then # Check for timeout
+            echo "Error: 'git merge-base' command timed out after 5 minutes."
+            echo "This means finding the common ancestor is taking an exceptionally long time, likely due to very deep or complex history not fully covered by the current fetch-depth ($ACTUAL_FETCH_DEPTH)."
+            echo "RECOMMENDATION: The most reliable solution is 'fetch-depth: 0' in 'actions/checkout' for full history, or a significantly larger specific depth if '0' is too slow."
             echo "For safety, this PR will be marked as requiring review."
             echo "require_review=true" >> $GITHUB_OUTPUT
-            exit 1
+            exit 0 # CRITICAL: Exit 0 to allow workflow to proceed with labeling
+          elif [ $MERGE_BASE_STATUS -ne 0 ]; then # Check for other non-zero exit statuses
+            echo "Error: 'git merge-base' failed with status $MERGE_BASE_STATUS (not a timeout)."
+            echo "Command output: $MERGE_BASE_OUTPUT" # This will show any error message from git merge-base itself
+            echo "This critical failure means a common ancestor could not be found between the PR's base commit ($PR_BASE_COMMIT_SHA) and its head commit ($PR_HEAD_SHA)."
+            echo "The MOST LIKELY CAUSE is that the history fetched by 'actions/checkout' (current fetch-depth: $ACTUAL_FETCH_DEPTH) is too shallow."
+            echo "RECOMMENDATION: Significantly increase 'fetch-depth' in 'actions/checkout'. Try a much larger value, or use '0' for full history."
+            echo "For safety, this PR will be marked as requiring review."
+            echo "require_review=true" >> $GITHUB_OUTPUT
+            exit 0 # CRITICAL: Exit 0 to allow workflow to proceed with labeling
           fi
-
-          # If merge-base succeeded, extract the SHA.
+          
+          # If merge-base succeeded (status 0), extract the SHA.
           MERGE_BASE=$(echo "$MERGE_BASE_OUTPUT" | awk '{print $1}') 
-
+          
           if [ -z "$MERGE_BASE" ]; then
-            # This should ideally not be reached if the status check above is comprehensive,
-            # but serves as a final validation of the merge base output.
+            # This case should ideally not be reached if the status checks above are robust,
+            # but serves as a final validation if git merge-base succeeded but returned empty output.
             echo "Error: Merge base determined to be empty even though 'git merge-base' command reported success (status 0)."
             echo "This is unexpected. Output from merge-base was: '$MERGE_BASE_OUTPUT'"
             echo "For safety, requiring review."
             echo "require_review=true" >> $GITHUB_OUTPUT
-            exit 0
+            exit 0 # Exit 0 to allow workflow to proceed
           fi
           
           echo "Merge Base for PR commits: $MERGE_BASE"
           
           PR_COMMIT_SHAS=$(git log "$MERGE_BASE".."$PR_HEAD_SHA" --pretty=format:"%H" --no-merges)
-
+          
           if [ -z "$PR_COMMIT_SHAS" ]; then
             echo "No new authored commits found in PR range ($MERGE_BASE..$PR_HEAD_SHA)."
             echo "No local review required by this check."
@@ -107,7 +118,7 @@ jobs:
           fi
           echo "Commit SHAs in PR to verify against upstream ($UPSTREAM_BRANCH_HEAD_REF):"
           echo "$PR_COMMIT_SHAS"
-
+          
           ALL_COMMITS_ARE_UPSTREAM=true
           for commit_sha in $PR_COMMIT_SHAS; do
             echo "Verifying commit $commit_sha against $UPSTREAM_BRANCH_HEAD_REF..."
@@ -119,7 +130,7 @@ jobs:
               break 
             fi
           done
-
+          
           if [[ "$ALL_COMMITS_ARE_UPSTREAM" == "true" ]]; then
             echo "All commits in this PR appear to originate from the upstream branch ($UPSTREAM_BRANCH_NAME)."
             echo "require_review=false" >> $GITHUB_OUTPUT
