@@ -8,6 +8,7 @@ on:
       - reopened
       - synchronize
       - ready_for_review
+      - labeled
 
 jobs:
   conditional_review:
@@ -107,9 +108,6 @@ jobs:
                     core.info(`Successfully fetched PR commit ${commitSha} from origin.`);
                   } catch (fetchError) {
                     core.setFailed(`Error: PR commit ${commitSha} could not be fetched or found locally after fetch attempt. Error: ${fetchError.message}`);
-                    // This is a critical failure of the checking process itself.
-                    // We could set requireReview = true here, or fail the job.
-                    // For now, let's assume it's a local commit if we can't even fetch it.
                     allCommitsFoundUpstream = false; 
                     break; 
                   }
@@ -227,6 +225,12 @@ jobs:
             const upstreamSyncLabel = 'upstream-sync';
             const reviewRequiredLabel = 'review-required';
             
+            // Get the list of approved reviewers
+            const approvedReviewers = (process.env.APPROVED_REVIEWERS_LIST)
+                                        .split(',')
+                                        .map(u => u.trim().toLowerCase()) // Normalize: trim and lowercase
+                                        .filter(u => u); // Remove any empty strings
+            
             const reviewDecisionOutput = '${{ steps.review_decision_and_labeling.outputs.require_review }}';
             const needsReviewBasedOnLogic = reviewDecisionOutput === 'true';
 
@@ -243,16 +247,51 @@ jobs:
             const hasReviewRequiredLabel = labelsOnIssue.some(label => label.name === reviewRequiredLabel);
 
             if (hasReviewCompletedLabel) {
-              core.info(`Review confirmed: PR has the '${reviewCompletedLabel}' label. Workflow check passed.`);
-              if (hasReviewRequiredLabel) {
+              let reviewConsideredValid = true;
+
+              // Check who added the label IF this workflow run was triggered by 'review-completed' being added
+              if (context.eventName === 'pull_request' && context.payload.action === 'labeled' && context.payload.label && context.payload.label.name === reviewCompletedLabel) {
+                const labeler = context.sender.login.toLowerCase();
+                core.info(`'${reviewCompletedLabel}' label was just added by: ${labeler}`);
+                if (approvedReviewers.length > 0 && !approvedReviewers.includes(labeler)) {
+                  core.warning(`'${reviewCompletedLabel}' label was added by '${labeler}', who is NOT an approved reviewer. This review is NOT considered valid for bypassing checks.`);
+                  reviewConsideredValid = false;
+
+                  // Remove the label if added by an unauthorized user
                   try {
-                      await github.rest.issues.removeLabel({ owner, repo, issue_number: prNumber, name: reviewRequiredLabel });
-                      core.info(`Cleaned up '${reviewRequiredLabel}' label after review completion.`);
-                  } catch (error) {
-                      core.warning(`Could not remove '${reviewRequiredLabel}' label during cleanup: ${error.message}`);
+                    core.info(`Attempting to remove '${reviewCompletedLabel}' label added by unauthorized user.`);
+                    await github.rest.issues.removeLabel({
+                      owner,
+                      repo,
+                      issue_number: prNumber,
+                      name: reviewCompletedLabel,
+                    });
+                    core.info(`Successfully removed '${reviewCompletedLabel}' label.`);
+                  } catch (removeError) {
+                    core.warning(`Failed to remove '${reviewCompletedLabel}' label: ${removeError.message}`);
                   }
+                } else if (approvedReviewers.length > 0) {
+                  core.info(`'${reviewCompletedLabel}' label was added by an approved reviewer: ${labeler}.`);
+                } else { 
+                  core.warning(`'${reviewCompletedLabel}' label was added, but no approved reviewers are configured. Cannot validate sender.`);
+                  reviewConsideredValid = false
+                }
+              } else {
+                core.info(`'${reviewCompletedLabel}' label is present (was not the trigger for this specific run). Assuming valid.`);
               }
-              return;
+
+              if (reviewConsideredValid) {
+                core.info(`Review confirmed: PR has a valid '${reviewCompletedLabel}' state. Workflow check passed.`);
+                if (hasReviewRequiredLabel) {
+                  try {
+                    await github.rest.issues.removeLabel({ owner, repo, issue_number: prNumber, name: reviewRequiredLabel });
+                    core.info(`Cleaned up '${reviewRequiredLabel}' label after review completion.`);
+                  } catch (error) {
+                    core.warning(`Could not remove '${reviewRequiredLabel}' label during cleanup: ${error.message}`);
+                  }
+                }
+                return;
+              }
             }
 
             // If it's marked as an upstream sync AND the logic determined no review is needed
@@ -266,12 +305,11 @@ jobs:
               if (!hasReviewRequiredLabel) {
                  core.warning(`Logic determined review is needed, but '${reviewRequiredLabel}' is missing. This might be an intermediate state or labeling issue.`);
               }
-              core.setFailed(`Review required: PR contains local/modified commits (or an error occurred during check) and lacks '${reviewCompletedLabel}' label.`);
-              return; // Explicitly return to avoid falling through
+              core.setFailed(`Review required: PR contains local/modified commits and lacks '${reviewCompletedLabel}' label.`);
+              return;
             }
             
-            // Default pass if none of the above conditions that fail or pass explicitly were met
-            // This implies !needsReviewBasedOnLogic AND !hasUpstreamSyncLabel AND !hasReviewCompletedLabel
-            // Which means logic said "no review" but it wasn't labeled as upstream-sync yet.
-            // This should ideally be handled by the labeling step; if it reaches here, it's a pass by default.
+            // Default pass
             core.info("PR does not require review based on commit checks, and is not yet completed or marked as upstream-sync. Passing by default for this specific check's logic, assuming labeling will catch up.");
+        env:
+          APPROVED_REVIEWERS_LIST: ${{ secrets.APPROVED_REVIEWERS_LIST }}
