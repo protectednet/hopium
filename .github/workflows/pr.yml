@@ -16,7 +16,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1000
+          fetch-depth: 10000
 
       - name: Define Upstream Repository and Branch
         id: upstream_config
@@ -34,7 +34,7 @@ jobs:
           PR_HEAD_SHA="${{ github.event.pull_request.head.sha }}"
 
           echo "--- Git Diagnostics ---"
-          echo "Current fetch-depth for actions/checkout is 100."
+          echo "Current fetch-depth for actions/checkout is 10000."
           # These fetches ensure a bit of history around the specific SHAs.
           git fetch origin --no-tags --depth=5 "$PR_BASE_COMMIT_SHA" || echo "Warning: Deepening fetch for PR_BASE_COMMIT_SHA ($PR_BASE_COMMIT_SHA) failed or had no effect."
           git fetch origin --no-tags --depth=5 "$PR_HEAD_SHA" || echo "Warning: Deepening fetch for PR_HEAD_SHA ($PR_HEAD_SHA) failed or had no effect."
