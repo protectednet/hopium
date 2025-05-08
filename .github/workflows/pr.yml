@@ -344,6 +344,18 @@ jobs:
                  core.warning(`Logic determined review is needed, but '${reviewRequiredLabel}' is missing. This might be an intermediate state or labeling issue.`);
               }
             
+              // Determine correct comment message to use
+              let failureMessage = `Review required: PR contains local/modified commits.`;
+              let commentReason = `because this PR contains commits not found in the upstream repository.`;
+
+              if (hasReviewCompletedLabel && !reviewConsideredValidAndPresent) {
+                // Handle the specific case where the label exists but was invalidated
+                failureMessage += ` The '${reviewCompletedLabel}' label was present but deemed invalid (e.g., added by unapproved user).`;
+                commentReason = `because the '${reviewCompletedLabel}' label was applied by an unapproved user.`;
+              } else if (!hasReviewCompletedLabel) {
+                failureMessage += ` The '${reviewCompletedLabel}' label is missing.`;
+              }
+            
               // Add Comment Informing who is required to perform the review
               let commentBody = `**Action Required:** Review needed ${commentReason}`;
               // Get the original-case list for mentions
