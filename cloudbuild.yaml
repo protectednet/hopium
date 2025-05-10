@@ -158,7 +158,7 @@ steps:
         - |
             set -e
             echo "--- Listing runtime dependencies for the 'chrome' target ---"
-            gn desc /workspace/hopium/src/out/ chrome runtime_deps
+            /workspace/depot_tools/gn desc /workspace/hopium/src/out/ chrome runtime_deps
             
             echo ""
             echo "--- Verifying presence and details of the main executable ---"
