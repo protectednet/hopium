@@ -89,7 +89,7 @@ steps:
             set -e
             cd /workspace/hopium/src
             git checkout $TAG_NAME
-            /workspace/depot_tools/gclient sync -D
+            /workspace/depot_tools/gclient sync -j 8 -D
     volumes:
       - name: ssh
         path: "/root/.ssh"
@@ -107,8 +107,8 @@ steps:
             set -e
             cd /workspace/hopium/src
   
-            mkdir -p out/Debug
-            /workspace/depot_tools/gn args out/Debug <<EOF
+            mkdir -p out/Release
+            /workspace/depot_tools/gn args out/Release <<EOF
             is_component_build=false
             is_debug=false
             is_official_build=true
@@ -146,7 +146,7 @@ steps:
         - |
             set -e
             cd /workspace/hopium/src
-            /workspace/depot_tools/autoninja -C out/Debug chrome -j 32
+            /workspace/depot_tools/autoninja -C out/Release chrome -j 32
 
   # 5. Post-Build Verification
   - name: 'gcr.io/protected-app-builds/totalbrowser-builder:1.0.9'
@@ -157,12 +157,11 @@ steps:
         - '-c'
         - |
             echo "--- Verifying presence and details of the main executable ---"
-            ls -lh /workspace/hopium/src/out/
-            ls -lh /workspace/hopium/src/out/Debug
+            ls -lh /workspace/hopium/src/out/Release
   
 
   # 6. Store Build Artifacts
   - name: 'gcr.io/cloud-builders/gsutil'
     id: 'upload-artifact'
     waitFor: [ 'verify-binary' ]
-    args: ['-m', 'cp', '-r', '/workspace/hopium/src/out/*', 'gs://tmp-totalbrowser-build-artifacts/$TAG_NAME']
+    args: ['-m', 'cp', '-r', '/workspace/hopium/src/out/Release/*', 'gs://tmp-totalbrowser-build-artifacts/$TAG_NAME']
