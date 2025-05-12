@@ -156,17 +156,13 @@ steps:
     args:
         - '-c'
         - |
-            set -e
-            echo "--- Listing runtime dependencies for the 'chrome' target ---"
-            /workspace/depot_tools/gn desc /workspace/hopium/src/out/ chrome runtime_deps
-            
-            echo ""
             echo "--- Verifying presence and details of the main executable ---"
+            ls -lh /workspace/hopium/src/out/
             ls -lh /workspace/hopium/src/out/Debug
   
 
-#  # 6. Store Build Artifacts
-#  - name: 'gcr.io/cloud-builders/gsutil'
-#    id: 'upload-artifact'
-#    waitFor: [ 'verify-binary' ]
-#    args: ['-m', 'cp', '-r', '/workspace/hopium/src/out/Debug/*', 'gs://tmp-totalbrowser-build-artifacts/$TAG_NAME']
+  # 6. Store Build Artifacts
+  - name: 'gcr.io/cloud-builders/gsutil'
+    id: 'upload-artifact'
+    waitFor: [ 'verify-binary' ]
+    args: ['-m', 'cp', '-r', '/workspace/hopium/src/out/*', 'gs://tmp-totalbrowser-build-artifacts/$TAG_NAME']
