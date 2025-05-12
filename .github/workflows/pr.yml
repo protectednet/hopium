@@ -1,0 +1,391 @@
+name: Code Reviews
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+      - labeled
+
+jobs:
+  conditional_review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR code (for commit objects)
+        uses: actions/checkout@v4
+        with:
+          # Fetch enough to ensure commit objects listed by the API are likely present.
+          fetch-depth: 1000
+
+      - name: Handle Stale Review on New Commits
+        # This step runs ONLY when new commits are pushed to the PR
+        if: github.event_name == 'pull_request' && github.event.action == 'synchronize'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const reviewCompletedLabel = 'review-completed';
+            const prNumber = context.issue.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            core.info(`Event is 'synchronize' (new commits pushed). Checking for '${reviewCompletedLabel}' label to remove if present.`);
+
+            const { data: labelsOnIssue } = await github.rest.issues.listLabelsOnIssue({
+              owner,
+              repo,
+              issue_number: prNumber,
+            });
+
+            const hasReviewCompletedLabel = labelsOnIssue.some(label => label.name === reviewCompletedLabel);
+
+            if (hasReviewCompletedLabel) {
+              core.info(`PR code was updated and the '${reviewCompletedLabel}' label was present. Removing label to indicate the review is now stale.`);
+              try {
+                await github.rest.issues.removeLabel({
+                  owner,
+                  repo,
+                  issue_number: prNumber,
+                  name: reviewCompletedLabel,
+                });
+                core.info(`Successfully removed '${reviewCompletedLabel}' label due to new commits.`);
+              } catch (error) {
+                core.warning(`Failed to remove '${reviewCompletedLabel}' label: ${error.message}`);
+              }
+            } else {
+              core.info(`PR code was updated, but the '${reviewCompletedLabel}' label was not present. No stale review action needed.`);
+            }
+
+      - name: Define Upstream Repository and Branch
+        id: upstream_config
+        run: |
+          echo "upstream_repo_url=https://github.com/chromium/chromium.git" >> $GITHUB_OUTPUT
+          echo "upstream_branch_name=main" >> $GITHUB_OUTPUT
+
+      - name: Fetch Upstream Chromium Branch
+        id: fetch_upstream # Give this step an id to reference its outputs if needed
+        run: |
+          UPSTREAM_REPO_URL="${{ steps.upstream_config.outputs.upstream_repo_url }}"
+          UPSTREAM_BRANCH_NAME="${{ steps.upstream_config.outputs.upstream_branch_name }}"
+          
+          echo "Adding/setting remote 'upstream' for $UPSTREAM_REPO_URL"
+          # This ensures the remote is added if it doesn't exist, or its URL is updated if it does.
+          if ! git remote | grep -q '^upstream$'; then
+            git remote add upstream "$UPSTREAM_REPO_URL"
+          else
+            git remote set-url upstream "$UPSTREAM_REPO_URL"
+          fi
+          
+          echo "Fetching from upstream remote (target branch: $UPSTREAM_BRANCH_NAME)..."
+          # This depth is CRITICAL. It needs to be deep enough to contain any Chromium commit
+          # that might be part of a PR you are syncing.
+          # If PRs can bring in very old Chromium commits, this depth needs to be large.
+          # Start with a significant number and adjust if necessary based on typical PR content.
+          UPSTREAM_FETCH_DEPTH=10000 # Example: 10,000. Increase if needed.
+          echo "Fetching upstream branch $UPSTREAM_BRANCH_NAME with depth $UPSTREAM_FETCH_DEPTH..."
+          git fetch upstream "$UPSTREAM_BRANCH_NAME" --no-tags --depth=$UPSTREAM_FETCH_DEPTH
+          
+          # Set the full ref name for upstream to be used in the next step
+          echo "UPSTREAM_BRANCH_FULL_REF=refs/remotes/upstream/$UPSTREAM_BRANCH_NAME" >> $GITHUB_ENV
+          echo "Successfully fetched upstream branch. Head ref set to $UPSTREAM_BRANCH_FULL_REF (via GITHUB_ENV)"
+        shell: bash
+
+      - name: Check PR Commits Against Upstream Chromium
+        id: pr_commit_check # Changed ID from previous examples for clarity
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = context.issue.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            // Retrieve the upstream branch ref from the environment variable set in the previous step
+            const upstreamBranchHeadRef = process.env.UPSTREAM_BRANCH_FULL_REF;
+
+            if (!upstreamBranchHeadRef) {
+              core.setFailed("Error: UPSTREAM_BRANCH_FULL_REF environment variable not set. Cannot proceed.");
+              return;
+            }
+
+            let allCommitsFoundUpstream = true; // Assume true, prove false
+            let requireReview = false;          // Final decision
+            let prHasCommits = false;           // Track if PR has any commits
+
+            core.info(`Workspaceing commits for PR #${prNumber} in ${owner}/${repo}...`);
+            core.info(`Will check against upstream ref: ${upstreamBranchHeadRef}`);
+
+            const iterator = github.paginate.iterator(github.rest.pulls.listCommits, {
+              owner,
+              repo,
+              pull_number: prNumber,
+              per_page: 100, 
+            });
+
+            for await (const { data: commitsInPage } of iterator) {
+              if (commitsInPage.length > 0) {
+                prHasCommits = true;
+              } else if (!prHasCommits) { // Only log if it's the first (empty) page
+                 core.info("No commits found in this PR via API on the first page.");
+              }
+
+              for (const prCommit of commitsInPage) {
+                const commitSha = prCommit.sha;
+                core.info(`Verifying PR commit ${commitSha}...`);
+
+                // 1. Ensure the commit object is locally available from the checkout of the fork.
+                try {
+                  await exec.exec('git', ['cat-file', '-e', commitSha], { silent: true });
+                } catch (e) {
+                  core.info(`PR commit ${commitSha} not found locally after initial checkout, attempting to fetch it from origin (fork)...`);
+                  try {
+                    await exec.exec('git', ['fetch', 'origin', commitSha, '--depth=1', '--no-tags', '--no-recurse-submodules']);
+                    await exec.exec('git', ['cat-file', '-e', commitSha], { silent: true }); 
+                    core.info(`Successfully fetched PR commit ${commitSha} from origin.`);
+                  } catch (fetchError) {
+                    core.setFailed(`Error: PR commit ${commitSha} could not be fetched or found locally after fetch attempt. Error: ${fetchError.message}`);
+                    allCommitsFoundUpstream = false; 
+                    break; 
+                  }
+                }
+
+                // 2. Check if this PR commit is an ancestor of the fetched upstream branch head.
+                let isAncestor = false;
+                try {
+                  const exitCode = await exec.exec('git', ['merge-base', '--is-ancestor', commitSha, upstreamBranchHeadRef], { ignoreReturnCode: true, silent: true });
+                  if (exitCode === 0) {
+                    isAncestor = true;
+                    core.info(`Commit ${commitSha} IS an ancestor of ${upstreamBranchHeadRef}. (Considered from upstream)`);
+                  } else if (exitCode === 1) {
+                    isAncestor = false;
+                    core.info(`Commit ${commitSha} IS NOT an ancestor of ${upstreamBranchHeadRef}. (Considered a local/new commit)`);
+                  } else {
+                    core.warning(`'git merge-base --is-ancestor' for ${commitSha} vs ${upstreamBranchHeadRef} failed with unexpected exit code ${exitCode}. Assuming not upstream for safety.`);
+                    isAncestor = false;
+                  }
+                } catch (error) {
+                  core.error(`Error executing 'git merge-base --is-ancestor' for commit ${commitSha}: ${error.message}. Assuming not upstream for safety.`);
+                  isAncestor = false; 
+                }
+
+                if (!isAncestor) {
+                  allCommitsFoundUpstream = false;
+                  break; // Found a non-upstream commit, no need to check further
+                }
+              }
+              if (!allCommitsFoundUpstream) break; // Break outer loop if a non-upstream commit was found
+            }
+
+            if (!prHasCommits) {
+              core.info("No commits found in this PR. No local changes requiring review.");
+              requireReview = false;
+            } else if (allCommitsFoundUpstream) {
+              core.info("All commits in this PR were found in the upstream branch.");
+              requireReview = false;
+            } else {
+              core.info("This PR contains commits not found on the upstream branch. Internal review required.");
+              requireReview = true;
+            }
+            core.setOutput('require_review', requireReview.toString());
+
+      - name: Determine Review Requirement and Add Labels
+        id: review_decision_and_labeling
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const requireReviewOutputFromCommitCheck = ${{ steps.pr_commit_check.outputs.require_review || false }};
+            const prRequiresReview = requireReviewOutputFromCommitCheck === true;
+
+            const prNumber = context.issue.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            let labelToAdd = '';
+            let labelToRemove = '';
+
+            core.info(`Output from pr_commit_check (require_review string): '${requireReviewOutputFromCommitCheck}'`);
+            core.info(`Interpreted as prRequiresReview (boolean): ${prRequiresReview}`);
+
+            if (prRequiresReview) {
+              core.info("Decision: PR requires internal review.");
+              labelToAdd = 'review-required';
+              labelToRemove = 'upstream-sync';
+            } else {
+              core.info("Decision: PR is purely upstream or empty. No internal review required by this check.");
+              labelToAdd = 'upstream-sync';
+              labelToRemove = 'review-required';
+            }
+
+            core.setOutput('require_review', prRequiresReview.toString());
+
+            if (labelToAdd) {
+              try {
+                await github.rest.issues.addLabels({ owner, repo, issue_number: prNumber, labels: [labelToAdd] });
+                core.info(`Successfully added label: ${labelToAdd}`);
+              } catch (error) {
+                core.setFailed(`Error adding label ${labelToAdd}: ${error.message}`);
+                return;
+              }
+            }
+
+            if (labelToRemove) {
+              try {
+                const { data: existingLabels } = await github.rest.issues.listLabelsOnIssue({ owner, repo, issue_number: prNumber });
+                const labelExists = existingLabels.some(label => label.name === labelToRemove);
+
+                if (labelExists) {
+                  await github.rest.issues.removeLabel({ owner, repo, issue_number: prNumber, name: labelToRemove });
+                  core.info(`Successfully removed label: ${labelToRemove}`);
+                } else {
+                  core.info(`Label ${labelToRemove} not found on PR, no need to remove.`);
+                }
+              } catch (error) {
+                core.warning(`Warning removing label ${labelToRemove}: ${error.message}`);
+              }
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enforce Review
+        id: enforce_review
+        if: always()
+        # ... (Your existing script for this step is likely fine, ensuring it uses the output from review_decision_and_labeling) ...
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = context.issue.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const reviewCompletedLabel = 'review-completed';
+            const upstreamSyncLabel = 'upstream-sync';
+            const reviewRequiredLabel = 'review-required';
+            
+            // Get the list of approved reviewers
+            const approvedReviewers = (process.env.APPROVED_REVIEWERS_LIST)
+                                        .split(',')
+                                        .map(u => u.trim().toLowerCase()) // Normalize: trim and lowercase
+                                        .filter(u => u); // Remove any empty strings
+            
+            const reviewDecisionOutput = '${{ steps.review_decision_and_labeling.outputs.require_review }}';
+            const needsReviewBasedOnLogic = reviewDecisionOutput === 'true';
+
+            core.info(`Decision from labeling step (needsReviewBasedOnLogic): ${needsReviewBasedOnLogic}`);
+
+            const { data: labelsOnIssue } = await github.rest.issues.listLabelsOnIssue({
+              owner,
+              repo,
+              issue_number: prNumber,
+            });
+
+            const hasReviewCompletedLabel = labelsOnIssue.some(label => label.name === reviewCompletedLabel);
+            const hasUpstreamSyncLabel = labelsOnIssue.some(label => label.name === upstreamSyncLabel);
+            const hasReviewRequiredLabel = labelsOnIssue.some(label => label.name === reviewRequiredLabel);
+
+            if (hasReviewCompletedLabel) {
+              let reviewConsideredValid = true;
+
+              // Check who added the label IF this workflow run was triggered by 'review-completed' being added
+              if (context.eventName === 'pull_request' && context.payload.action === 'labeled' && context.payload.label && context.payload.label.name === reviewCompletedLabel) {
+                const labeler = context.sender.login.toLowerCase();
+                core.info(`'${reviewCompletedLabel}' label was just added by: ${labeler}`);
+                if (approvedReviewers.length > 0 && !approvedReviewers.includes(labeler)) {
+                  core.warning(`'${reviewCompletedLabel}' label was added by '${labeler}', who is NOT an approved reviewer. This review is NOT considered valid for bypassing checks.`);
+                  reviewConsideredValid = false;
+
+                  // Remove the label if added by an unauthorized user
+                  try {
+                    core.info(`Attempting to remove '${reviewCompletedLabel}' label added by unauthorized user.`);
+                    await github.rest.issues.removeLabel({
+                      owner,
+                      repo,
+                      issue_number: prNumber,
+                      name: reviewCompletedLabel,
+                    });
+                    core.info(`Successfully removed '${reviewCompletedLabel}' label.`);
+                  } catch (removeError) {
+                    core.warning(`Failed to remove '${reviewCompletedLabel}' label: ${removeError.message}`);
+                  }
+                } else if (approvedReviewers.length > 0) {
+                  core.info(`'${reviewCompletedLabel}' label was added by an approved reviewer: ${labeler}.`);
+                } else { 
+                  core.warning(`'${reviewCompletedLabel}' label was added, but no approved reviewers are configured. Cannot validate sender.`);
+                  reviewConsideredValid = false
+                }
+              } else {
+                core.info(`'${reviewCompletedLabel}' label is present (was not the trigger for this specific run). Assuming valid.`);
+              }
+
+              if (reviewConsideredValid) {
+                core.info(`Review confirmed: PR has a valid '${reviewCompletedLabel}' state. Workflow check passed.`);
+                if (hasReviewRequiredLabel) {
+                  try {
+                    await github.rest.issues.removeLabel({ owner, repo, issue_number: prNumber, name: reviewRequiredLabel });
+                    core.info(`Cleaned up '${reviewRequiredLabel}' label after review completion.`);
+                  } catch (error) {
+                    core.warning(`Could not remove '${reviewRequiredLabel}' label during cleanup: ${error.message}`);
+                  }
+                }
+                return;
+              }
+            }
+
+            // If it's marked as an upstream sync AND the logic determined no review is needed
+            if (hasUpstreamSyncLabel && !needsReviewBasedOnLogic) {
+              core.info(`PR is correctly labeled '${upstreamSyncLabel}' and logic confirms no local changes. Workflow check passed.`);
+              return;
+            }
+
+            // If logic determined review is needed (and not completed)
+            if (needsReviewBasedOnLogic) {
+              if (!hasReviewRequiredLabel) {
+                 core.warning(`Logic determined review is needed, but '${reviewRequiredLabel}' is missing. This might be an intermediate state or labeling issue.`);
+              }
+            
+              // Determine correct comment message to use
+              let failureMessage = `Review required: PR contains local/modified commits.`;
+              let commentReason = `because this PR contains commits not found in the upstream repository.`;
+
+              if (hasReviewCompletedLabel && !reviewConsideredValidAndPresent) {
+                // Handle the specific case where the label exists but was invalidated
+                failureMessage += ` The '${reviewCompletedLabel}' label was present but deemed invalid (e.g., added by unapproved user).`;
+                commentReason = `because the '${reviewCompletedLabel}' label was applied by an unapproved user.`;
+              } else if (!hasReviewCompletedLabel) {
+                failureMessage += ` The '${reviewCompletedLabel}' label is missing.`;
+              }
+            
+              // Add Comment Informing who is required to perform the review
+              let commentBody = `**Action Required:** Review needed ${commentReason}`;
+              // Get the original-case list for mentions
+              const mentionableReviewers = (process.env.APPROVED_REVIEWERS_LIST || "").split(',').map(u => u.trim()).filter(u => u && u !== 'PLEASE_SET_SECRET');
+              if (mentionableReviewers.length > 0) {
+                  // Create @mentions
+                  const mentions = mentionableReviewers.map(reviewer => `@${reviewer}`).join(', ');
+                  commentBody += `\n\nPlease request a review from one of the approved reviewers: ${mentions}`;
+              } else {
+                  commentBody += `\n\nPlease request a manual review. (No approved reviewers list configured in workflow secrets/variables).`;
+              }
+              core.info("Posting comment to PR indicating review is required.");
+              try {
+                  await github.rest.issues.createComment({
+                      owner,
+                      repo,
+                      issue_number: prNumber,
+                      body: commentBody,
+                  });
+                  core.info("Successfully posted review required comment.");
+              } catch (commentError) {
+                  // Log warning but proceed to fail the check
+                  core.warning(`Warning: Failed to post comment to PR #${prNumber}: ${commentError.message}`);
+              }
+
+              core.setFailed(`Review required: PR contains local/modified commits and lacks '${reviewCompletedLabel}' label.`);
+              return;
+            }
+            
+            // Default pass
+            core.info("PR does not require review based on commit checks, and is not yet completed or marked as upstream-sync. Passing by default for this specific check's logic, assuming labeling will catch up.");
+        env:
+          APPROVED_REVIEWERS_LIST: ${{ secrets.APPROVED_REVIEWERS_LIST }}

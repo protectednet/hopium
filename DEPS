@@ -34,6 +34,7 @@
 
 gclient_gn_args_file = 'src/build/config/gclient_args.gni'
 gclient_gn_args = [
+  'build_with_hopium',
   'build_with_chromium',
   'checkout_android',
   'checkout_android_prebuilts_build_tools',
@@ -51,6 +52,9 @@ gclient_gn_args = [
 
 
 vars = {
+  # Build hopium tsec brand
+  'build_with_hopium': False,
+
   # Variable that can be used to support multiple build scenarios, like having
   # Chromium specific targets in a client project's GN file or sync dependencies
   # conditionally etc.
@@ -306,6 +310,7 @@ vars = {
   'skia_git': 'https://skia.googlesource.com',
   'swiftshader_git': 'https://swiftshader.googlesource.com',
   'webrtc_git': 'https://webrtc.googlesource.com',
+  'hopium_git': 'git@github.com:protectednet',
   'betocore_git': 'https://beto-core.googlesource.com',
   # Three lines of non-changing comments so that
   # the commit queue can handle CLs rolling V8
@@ -547,6 +552,22 @@ allowed_hosts = [
 ]
 
 deps = {
+  'src/hopium/tslib_hopium': {
+    'url': Var('hopium_git') + '/tslib_hopium.git' + '@' + '686d3f51ebf70ba8097de852a90b0ef710dcea76',
+    'condition': 'build_with_hopium',
+  },
+  'src/hopium/tsec_branding': {
+      'url': Var('hopium_git') + '/tsec_branding.git' + '@' + '187d01930b937ea91248da84ba73276a86bc4cc1',
+      'condition': 'build_with_hopium',
+  },
+  'src/third_party/poco/src': {
+    'url': 'https://github.com/pocoproject/poco.git@poco-1.12.4-release',
+    'condition': 'build_with_hopium',
+  },
+  'src/third_party/openssl/src': {
+    'url': 'https://github.com/openssl/openssl.git@openssl-3.1.1',
+    'condition': 'build_with_hopium',
+  },
   'src/third_party/clang-format/script':
     Var('chromium_git') +
     '/external/github.com/llvm/llvm-project/clang/tools/clang-format.git@' +
